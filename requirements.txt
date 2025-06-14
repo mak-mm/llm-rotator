@@ -1,0 +1,34 @@
+# Core dependencies - keeping to ~20 packages as specified
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+python-dotenv==1.0.1
+
+# LLM Provider SDKs
+openai==1.57.0
+anthropic==0.40.0
+google-generativeai==0.8.3
+
+# Detection Libraries
+presidio-analyzer==2.2.355
+presidio-anonymizer==2.2.355
+# guesslang==2.2.1  # Temporarily disabled due to TensorFlow version conflict
+spacy==3.8.2
+
+# State Management
+redis==5.2.1
+python-multipart==0.0.19
+
+# Async Support
+httpx>=0.23.0,<1.0
+asyncio==3.4.3
+
+# Development Tools
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+pytest-mock==3.14.0
+pytest-httpx>=0.30.0
+ruff==0.8.4
+black==24.10.0
+mypy==1.14.0
