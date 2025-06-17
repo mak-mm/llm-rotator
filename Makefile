@@ -19,7 +19,13 @@ help:
 	@echo "  format          Format code"
 	@echo "  type-check      Run type checking"
 	@echo "  clean           Clean up generated files"
-	@echo "  dev             Start development server"
+	@echo "  dev             Start backend development server only"
+	@echo "  dev-backend     Start backend development server"
+	@echo "  dev-frontend    Start frontend development server"
+	@echo "  dev-full        Start complete development environment (with live logs)"
+	@echo "  dev-full-advanced Advanced startup with detailed monitoring"
+	@echo "  dev-redis       Start Redis container"
+	@echo "  dev-stop        Stop all development services"
 	@echo "  docker-build    Build Docker image"
 	@echo "  docker-up       Start with Docker Compose"
 	@echo "  docker-down     Stop Docker Compose"
@@ -66,9 +72,27 @@ type-check:
 dev:
 	python3 -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
-dev-with-ui:
-	uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000 &
-	# Add UI server command when implemented
+dev-backend:
+	python3 -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+
+dev-frontend:
+	cd frontend && npm run dev
+
+dev-full:
+	./scripts/dev-start-simple.sh
+
+dev-full-advanced:
+	./scripts/dev-start.sh
+
+dev-redis:
+	docker run -d --name llm-rotator-redis -p 6379:6379 redis:7-alpine
+
+dev-stop:
+	@echo "Stopping development services..."
+	@pkill -f "uvicorn src.api.main:app" || true
+	@pkill -f "next dev" || true
+	@docker stop llm-rotator-redis || true
+	@docker rm llm-rotator-redis || true
 
 # Docker
 docker-build:

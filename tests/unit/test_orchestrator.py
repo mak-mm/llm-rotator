@@ -3,6 +3,7 @@ Unit tests for orchestrator components
 """
 
 import pytest
+import pytest_asyncio
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime
@@ -158,7 +159,7 @@ class TestResponseAggregator:
                     finish_reason="stop", 
                     tokens_used=15,
                     latency_ms=120.0,
-                    model_used="claude-3-sonnet"
+                    model_used="claude-sonnet-4-20250514"
                 ),
                 processing_time_ms=120.0,
                 cost_estimate=0.01
@@ -413,7 +414,7 @@ class TestPerformanceMonitor:
                     finish_reason="stop",
                     tokens_used=30,
                     latency_ms=200.0,
-                    model_used="claude-3-sonnet"
+                    model_used="claude-sonnet-4-20250514"
                 ),
                 processing_time_ms=200.0,
                 cost_estimate=0.025
@@ -473,7 +474,7 @@ class TestPerformanceMonitor:
 class TestQueryOrchestrator:
     """Integration tests for the main orchestrator"""
     
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def orchestrator(self):
         """Create a test orchestrator with mocked dependencies"""
         config = OrchestrationConfig(
@@ -511,7 +512,7 @@ class TestQueryOrchestrator:
             finish_reason="stop",
             tokens_used=50,
             latency_ms=300.0,
-            model_used="claude-3-sonnet"
+            model_used="claude-sonnet-4-20250514"
         )
         orchestrator.provider_manager.process_request.return_value = mock_response
         

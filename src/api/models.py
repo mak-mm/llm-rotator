@@ -2,10 +2,11 @@
 Pydantic models for API request/response validation
 """
 
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, List, Dict, Optional
+
+from pydantic import BaseModel, Field, validator
 
 
 class ProviderType(str, Enum):
@@ -26,15 +27,15 @@ class FragmentationStrategy(str, Enum):
 class QueryRequest(BaseModel):
     """Request model for query analysis"""
     query: str = Field(..., min_length=1, max_length=10000, description="User query to be fragmented")
-    strategy: Optional[FragmentationStrategy] = Field(
+    strategy: FragmentationStrategy | None = Field(
         None,
         description="Fragmentation strategy to use (auto-selected if not provided)"
     )
-    use_orchestrator: Optional[bool] = Field(
+    use_orchestrator: bool | None = Field(
         None,
         description="Force orchestrator usage (auto-determined if not provided)"
     )
-    
+
     @validator('query')
     def validate_query(cls, v):
         if not v.strip():
@@ -75,12 +76,12 @@ class AnalysisResponse(BaseModel):
     request_id: str = Field(..., description="Unique request identifier")
     original_query: str = Field(..., description="Original user query")
     detection: DetectionResult = Field(..., description="Detection analysis results")
-    fragments: List[Fragment] = Field(..., description="Query fragments")
+    fragments: list[Fragment] = Field(..., description="Query fragments")
     aggregated_response: str = Field(..., description="Final aggregated response")
     privacy_score: float = Field(..., ge=0.0, le=1.0, description="Privacy preservation score")
     total_time: float = Field(..., description="Total processing time (seconds)")
-    cost_comparison: Dict[str, float] = Field(..., description="Cost comparison data")
-    
+    cost_comparison: dict[str, float] = Field(..., description="Cost comparison data")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -135,11 +136,41 @@ class StatusResponse(BaseModel):
 class VisualizationData(BaseModel):
     """Data for UI visualization"""
     request_id: str
-    fragments: List[Fragment]
-    fragment_responses: List[FragmentResponse]
+    fragments: list[Fragment]
+    fragment_responses: list[FragmentResponse]
     timeline: List[Dict[str, Any]] = Field(..., description="Processing timeline events")
-    privacy_metrics: Dict[str, Any] = Field(..., description="Privacy preservation metrics")
+    privacy_metrics: dict[str, Any] = Field(..., description="Privacy preservation metrics")
 
+
+class ProviderStatus(BaseModel):
+    """Provider status information"""
+    id: str = Field(..., description="Provider identifier")
+    name: str = Field(..., description="Provider name")
+    model: str = Field(..., description="Model being used")
+    status: str = Field(..., description="online, degraded, offline")
+    latency: float = Field(..., description="Average latency in milliseconds")
+    success_rate: float = Field(..., description="Success rate percentage")
+    requests_today: int = Field(..., description="Number of requests today")
+    cost: float = Field(..., description="Cost accumulated today")
+    capabilities: List[str] = Field(..., description="Provider capabilities")
+    last_updated: datetime = Field(..., description="Last status update")
+
+
+class MetricsSummary(BaseModel):
+    """Summary metrics for analytics"""
+    total_queries: int = Field(..., description="Total queries processed")
+    total_fragments: int = Field(..., description="Total fragments created")
+    total_providers: int = Field(..., description="Number of providers used")
+    total_cost: float = Field(..., description="Total cost")
+    average_latency: float = Field(..., description="Average response latency")
+    privacy_score: float = Field(..., description="Average privacy score")
+
+
+class TimeseriesData(BaseModel):
+    """Time-series data point"""
+    timestamp: datetime = Field(..., description="Data point timestamp")
+    value: float = Field(..., description="Metric value")
+    
 
 class ErrorResponse(BaseModel):
     """Error response model"""

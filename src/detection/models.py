@@ -2,9 +2,10 @@
 Models for detection engine results
 """
 
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class PIIEntityType(str, Enum):
@@ -32,7 +33,7 @@ class PIIEntity(BaseModel):
     start: int = Field(..., description="Start position in text")
     end: int = Field(..., description="End position in text")
     score: float = Field(..., ge=0.0, le=1.0, description="Confidence score")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -62,7 +63,7 @@ class NamedEntity(BaseModel):
     label: str = Field(..., description="Entity label (ORG, LOC, etc.)")
     start: int = Field(..., description="Start position")
     end: int = Field(..., description="End position")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -78,7 +79,7 @@ class DetectionReport(BaseModel):
     """Complete detection analysis report"""
     # PII Detection
     has_pii: bool = Field(..., description="Whether PII was detected")
-    pii_entities: List[PIIEntity] = Field(
+    pii_entities: list[PIIEntity] = Field(
         default_factory=list,
         description="List of detected PII entities"
     )
@@ -88,16 +89,16 @@ class DetectionReport(BaseModel):
         le=1.0,
         description="Ratio of PII text to total text"
     )
-    
+
     # Code Detection
     code_detection: CodeDetection = Field(..., description="Code detection results")
-    
+
     # Entity Recognition
-    named_entities: List[NamedEntity] = Field(
+    named_entities: list[NamedEntity] = Field(
         default_factory=list,
         description="Named entities detected"
     )
-    
+
     # Overall Assessment
     sensitivity_score: float = Field(
         ...,
@@ -105,14 +106,14 @@ class DetectionReport(BaseModel):
         le=1.0,
         description="Overall sensitivity score (0=low, 1=high)"
     )
-    
+
     # Metadata
     processing_time: float = Field(..., description="Time taken for detection (ms)")
-    analyzers_used: List[str] = Field(
+    analyzers_used: list[str] = Field(
         default_factory=list,
         description="Detection analyzers used"
     )
-    
+
     # Recommendations
     recommended_strategy: Optional[str] = Field(
         None,
@@ -122,7 +123,7 @@ class DetectionReport(BaseModel):
         False,
         description="Whether orchestrator is recommended"
     )
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -166,7 +167,7 @@ class SensitivityFactors(BaseModel):
     code_factor: float = Field(0.0, ge=0.0, le=1.0)
     entity_factor: float = Field(0.0, ge=0.0, le=1.0)
     keyword_factor: float = Field(0.0, ge=0.0, le=1.0)
-    
+
     def calculate_overall(self) -> float:
         """Calculate weighted overall sensitivity"""
         weights = {
@@ -175,7 +176,7 @@ class SensitivityFactors(BaseModel):
             "entity": 0.15,
             "keyword": 0.25
         }
-        
+
         return (
             self.pii_factor * weights["pii"] +
             self.code_factor * weights["code"] +

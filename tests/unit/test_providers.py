@@ -3,6 +3,7 @@ Unit tests for LLM providers
 """
 
 import pytest
+import pytest_asyncio
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime
@@ -71,13 +72,13 @@ class TestProviderModels:
         config = ProviderConfig(
             provider_type=ProviderType.OPENAI,
             api_key="test-key",
-            model_name="gpt-4",
+            model_name="gpt-4.1",
             capabilities=[ModelCapability.TEXT_GENERATION, ModelCapability.CODE_ANALYSIS]
         )
         
         assert config.provider_type == ProviderType.OPENAI
         assert config.api_key == "test-key"
-        assert config.model_name == "gpt-4"
+        assert config.model_name == "gpt-4.1"
         assert config.max_tokens == 4000  # Default value
         assert ModelCapability.TEXT_GENERATION in config.capabilities
     
@@ -270,7 +271,7 @@ class TestProviderManager:
             )
         }
     
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def manager(self, manager_config):
         """Create a provider manager for testing"""
         manager = ProviderManager(manager_config)
@@ -403,7 +404,7 @@ class TestProviderImplementations:
         config = ProviderConfig(
             provider_type=ProviderType.OPENAI,
             api_key="test-key",
-            model_name="gpt-4"
+            model_name="gpt-4.1"
         )
         
         provider = OpenAIProvider("openai-test", config)
@@ -417,7 +418,7 @@ class TestProviderImplementations:
         config = ProviderConfig(
             provider_type=ProviderType.ANTHROPIC,
             api_key="test-key",
-            model_name="claude-3-opus"
+            model_name="claude-sonnet-4-20250514"
         )
         
         provider = AnthropicProvider("anthropic-test", config)
@@ -431,7 +432,7 @@ class TestProviderImplementations:
         config = ProviderConfig(
             provider_type=ProviderType.GOOGLE,
             api_key="test-key",
-            model_name="gemini-1.5-pro"
+            model_name="gemini-2.5-flash-preview-04-17"
         )
         
         provider = GoogleProvider("google-test", config)
@@ -446,8 +447,8 @@ class TestProviderImplementations:
         
         configs = [
             ProviderConfig(provider_type=ProviderType.OPENAI, api_key="test", model_name="gpt-4"),
-            ProviderConfig(provider_type=ProviderType.ANTHROPIC, api_key="test", model_name="claude-3-sonnet"),
-            ProviderConfig(provider_type=ProviderType.GOOGLE, api_key="test", model_name="gemini-pro")
+            ProviderConfig(provider_type=ProviderType.ANTHROPIC, api_key="test", model_name="claude-sonnet-4-20250514"),
+            ProviderConfig(provider_type=ProviderType.GOOGLE, api_key="test", model_name="gemini-2.5-flash-preview-04-17")
         ]
         
         providers = [

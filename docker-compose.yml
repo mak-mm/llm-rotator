@@ -5,16 +5,16 @@ services:
     build: .
     ports:
       - "8000:8000"  # API port
-      - "3000:3000"  # Demo UI port
+      - "3000:3000"  # Frontend UI port
     environment:
       - REDIS_URL=redis://redis:6379
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4-1106-preview}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4.1}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - CLAUDE_ORCHESTRATOR_MODEL=${CLAUDE_ORCHESTRATOR_MODEL:-claude-3-opus-20240229}
-      - CLAUDE_WORKER_MODEL=${CLAUDE_WORKER_MODEL:-claude-3-sonnet-20240229}
+      - CLAUDE_ORCHESTRATOR_MODEL=${CLAUDE_ORCHESTRATOR_MODEL:-claude-4-opus-20250514}
+      - CLAUDE_WORKER_MODEL=${CLAUDE_WORKER_MODEL:-claude-sonnet-4-20250514}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash-preview-04-17}
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - DEBUG=${DEBUG:-false}
     depends_on:
