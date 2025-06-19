@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMetrics, useTimeseriesData } from "@/hooks/useMetrics";
-import { useWebSocketSubscription } from "@/hooks/useWebSocket";
 import { RealTimeIndicator } from "@/components/common/real-time-indicator";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -115,13 +114,7 @@ export function AnalyticsDashboard() {
   const { data: metricsData, isLoading: metricsLoading, error: metricsError } = useMetrics(timeRange);
   const { data: timeSeriesData, isLoading: timeSeriesLoading } = useTimeseriesData(selectedMetric, timeRange);
 
-  // Subscribe to real-time metrics updates
-  useWebSocketSubscription('metrics_update', (data) => {
-    console.log('📊 Real-time metrics update received:', data);
-    toast.success("Analytics updated in real-time", {
-      duration: 2000,
-    });
-  });
+  // TODO: Add SSE subscription for real-time metrics updates if needed
 
   // Fallback to mock data if API fails
   const [mockTimeSeriesData, setMockTimeSeriesData] = useState(generateTimeSeriesData(7));

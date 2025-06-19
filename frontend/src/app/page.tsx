@@ -5,55 +5,41 @@ import { PrivacyDashboard } from "@/components/dashboard/privacy-dashboard";
 import { ProviderStatus } from "@/components/providers/provider-status";
 import { Header } from "@/components/layout/header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ThreeDFragmentation } from "@/components/visualization/3d-fragmentation";
+import { ProcessingFlow } from "@/components/flow/ProcessingFlow";
+import { InvestorDashboardClean } from "@/components/visualization/investor-dashboard-clean";
 import { QueryProvider, useQuery } from "@/contexts/query-context";
 import { Building2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 
 function HomeContent() {
-  const { queryResult, isProcessing, setQueryResult, setIsProcessing } = useQuery();
+  const [isMounted, setIsMounted] = useState(false);
+  const { 
+    queryResult, 
+    isProcessing, 
+    setQueryResult, 
+    setIsProcessing, 
+    investorMetrics, 
+    realTimeData,
+    requestId 
+  } = useQuery();
 
-  // Debug logging
-  console.log('🏠 Home - queryResult:', queryResult);
-  console.log('🏠 Home - isProcessing:', isProcessing);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-  // Test button to manually set query result
-  const testVisualization = async () => {
-    console.log('🧪 Testing visualization with manual data...');
-    setIsProcessing(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const testResult = {
-        request_id: "test-" + Date.now(),
-        original_query: "🧪 TEST MODE: My name is Alice Johnson, email alice@test.com. Help me with investment advice.",
-        privacy_score: 0.92,
-        total_time: 1.8,
-        cost_comparison: {
-          fragmented_cost: 0.0008,
-          single_provider_cost: 0.0035,
-          savings_percentage: 77
-        },
-        fragments: [
-          { id: "test-1", content: "Fragment 1: Privacy testing", provider: "openai" as const, anonymized: true, context_percentage: 0.33 },
-          { id: "test-2", content: "Fragment 2: Query analysis", provider: "anthropic" as const, anonymized: false, context_percentage: 0.33 },
-          { id: "test-3", content: "Fragment 3: Response generation", provider: "google" as const, anonymized: true, context_percentage: 0.34 }
-        ],
-        detection: {
-          has_pii: true,
-          pii_entities: [{ type: "PERSON", text: "TEST_USER", start: 0, end: 9 }],
-          has_code: false,
-          entities: [],
-          sensitivity_score: 0.6
-        },
-        aggregated_response: "✅ Test successful! The visualization system is working correctly and displaying real-time query fragmentation data."
-      };
-      
-      setQueryResult(testResult);
-      setIsProcessing(false);
-    }, 2000);
-  };
+  // Debug logging (only when mounted to avoid hydration issues)
+  if (isMounted) {
+    console.log('🏠 Home - queryResult:', queryResult);
+    console.log('🏠 Home - isProcessing:', isProcessing);
+  }
+
+  // Don't render dynamic content until client-side mount
+  if (!isMounted) {
+    return <div>Loading...</div>;
+  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -79,22 +65,22 @@ function HomeContent() {
           </div>
         </div>
 
-        {/* Test Controls */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-sm">Visualization Test</h3>
-              <p className="text-xs text-gray-600">Test the 3D visualization with sample data</p>
-            </div>
-            <Button onClick={testVisualization} variant="outline" size="sm">
-              🧪 Test Sample Data
-            </Button>
-          </div>
+
+        {/* Processing Flow Visualization */}
+        <div className="mb-8">
+          <ProcessingFlow 
+            requestId={requestId}
+            isProcessing={isProcessing}
+          />
         </div>
 
-        {/* 3D Visualization with Real Data */}
+        {/* Investor Dashboard */}
         <div className="mb-8">
-          <ThreeDFragmentation queryData={queryResult} isProcessing={isProcessing} />
+          <InvestorDashboardClean 
+            realTimeData={realTimeData} 
+            investorMetrics={investorMetrics}
+            isProcessing={isProcessing} 
+          />
         </div>
 
         {/* Main Content */}

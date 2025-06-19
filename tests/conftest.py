@@ -21,11 +21,24 @@ from tests.fixtures.test_data import (
 )
 
 
-@pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+@pytest.fixture(scope="function")
+def event_loop():
+    """Create an instance of the default event loop for each test function."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+    
+    asyncio.set_event_loop(loop)
     yield loop
+    
+    # Clean up any pending tasks
+    pending = asyncio.all_tasks(loop)
+    for task in pending:
+        task.cancel()
+    
+    # Run until all tasks are cancelled
+    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
     loop.close()
 
 
@@ -45,6 +58,39 @@ def mock_env_vars(monkeypatch):
         monkeypatch.setenv(key, value)
     
     return test_env
+
+
+@pytest.fixture
+def mock_provider_manager():
+    """Mock provider manager for integration tests"""
+    from unittest.mock import Mock, AsyncMock
+    
+    manager = Mock()
+    
+    # Mock provider methods
+    mock_provider = Mock()
+    mock_provider.generate = AsyncMock()
+    mock_provider.validate_config = Mock(return_value=True)
+    
+    # Mock response
+    mock_response = Mock()
+    mock_response.content = "Test response content"
+    mock_response.tokens_used = 50
+    mock_response.cost = 0.002
+    mock_provider.generate.return_value = mock_response
+    
+    # Set up providers
+    manager.providers = {
+        "openai": mock_provider,
+        "anthropic": mock_provider,
+        "google": mock_provider
+    }
+    
+    # Mock manager methods
+    manager.get_provider = Mock(return_value=mock_provider)
+    manager.route_fragment = AsyncMock(return_value=("openai", mock_response))
+    
+    return manager
 
 
 @pytest.fixture
@@ -129,6 +175,8 @@ def setup_test_logging():
     logging.getLogger("src").setLevel(logging.WARNING)
     logging.getLogger("presidio").setLevel(logging.ERROR)
     logging.getLogger("spacy").setLevel(logging.ERROR)
+    logging.getLogger("uvicorn").setLevel(logging.ERROR)
+    logging.getLogger("fastapi").setLevel(logging.ERROR)
     
     yield
     

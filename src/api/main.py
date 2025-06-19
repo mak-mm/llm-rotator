@@ -8,13 +8,12 @@ import os
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routes import router
-from src.api.websocket import websocket_endpoint, periodic_updates
+from src.api.investor_collector import investor_metrics_collector
 from src.state.redis_client import RedisClient
-import asyncio
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +24,10 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# WebSocket log handler disabled - using SSE instead
+# root_logger = logging.getLogger()
+# root_logger.addHandler(websocket_log_handler)
 
 
 @asynccontextmanager
@@ -96,6 +99,9 @@ async def lifespan(app: FastAPI):
     for provider_id, config in provider_configs.items():
         await provider_manager.add_provider(provider_id, config)
     
+    # Store provider manager in app state for access from routes
+    app.state.provider_manager = provider_manager
+    
     # Initialize orchestrator
     orchestration_config = OrchestrationConfig(
         max_concurrent_requests=10,
@@ -114,10 +120,8 @@ async def lifespan(app: FastAPI):
     # Store in app state
     app.state.orchestrator = orchestrator
     app.state.provider_manager = provider_manager
-
-    # Start periodic WebSocket updates in background
-    background_task = asyncio.create_task(periodic_updates())
-    app.state.background_task = background_task
+    
+    # WebSocket functionality removed - using SSE instead
 
     logger.info("API startup complete")
 
@@ -187,11 +191,27 @@ app.add_middleware(
 # Include routes
 app.include_router(router)
 
-# WebSocket endpoint
-@app.websocket("/ws/updates")
-async def websocket_updates(websocket: WebSocket):
-    """WebSocket endpoint for real-time updates"""
-    await websocket_endpoint(websocket)
+# WebSocket endpoints disabled - using SSE instead
+# @app.websocket("/ws/updates")
+# async def websocket_updates(websocket: WebSocket):
+#     """WebSocket endpoint for real-time updates"""
+#     await websocket_endpoint(websocket)
+
+# @app.websocket("/ws/logs")
+# async def websocket_logs(websocket: WebSocket):
+#     """WebSocket endpoint for real-time log streaming"""
+#     await websocket.accept()
+#     
+#     # Add connection to log handler
+#     websocket_log_handler.add_connection(websocket)
+#     
+#     try:
+#         # Keep connection alive and listen for client messages
+#         while True:
+#             await websocket.receive_text()
+#     except:
+#         # Remove connection when client disconnects
+#         websocket_log_handler.remove_connection(websocket)
 
 
 @app.get("/")

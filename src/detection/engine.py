@@ -64,8 +64,8 @@ class DetectionEngine:
         start_time = time.time()
 
         try:
-            # Run detections in parallel
-            loop = asyncio.get_event_loop()
+            # Run detections in parallel using asyncio.create_task
+            loop = asyncio.get_running_loop()
 
             # Create tasks for parallel execution
             pii_future = loop.run_in_executor(

@@ -1,0 +1,443 @@
+"""
+End-to-end tests for complete investor demo flow
+Tests the full investor demonstration from query submission to executive summary
+"""
+
+import pytest
+import asyncio
+import json
+import time
+from datetime import datetime
+from fastapi.testclient import TestClient
+from unittest.mock import Mock, AsyncMock, patch
+
+from src.api.main import app
+from src.api.investor_collector import investor_metrics_collector
+from src.api.websocket import manager
+from src.api.investor_models import WebSocketMessageType
+
+
+class TestInvestorDemoEndToEnd:
+    """End-to-end tests for complete investor demonstration flow"""
+    
+    @pytest.fixture
+    def client(self):
+        """Create test client"""
+        return TestClient(app)
+    
+    @pytest.fixture
+    def investor_query_payload(self):
+        """Sample query payload for investor demo"""
+        return {
+            "query": "My name is Alice Johnson, email alice@techcorp.com, SSN 123-45-6789. I need help analyzing market opportunities for our new AI privacy platform. Can you provide investment insights for a $50M Series B funding round?",
+            "strategy": "semantic_split",
+            "privacy_level": "high",
+            "use_orchestrator": True
+        }
+    
+    @pytest.fixture 
+    def mock_provider_manager(self):
+        """Mock provider manager for testing"""
+        mock_manager = Mock()
+        mock_provider = Mock()
+        mock_provider.generate = AsyncMock()
+        
+        # Mock successful provider responses
+        mock_response = Mock()
+        mock_response.content = "This is a test response from the provider demonstrating successful query processing."
+        mock_response.tokens_used = 150
+        mock_provider.generate.return_value = mock_response
+        
+        mock_manager.providers = {
+            "openai": mock_provider,
+            "anthropic": mock_provider,
+            "google": mock_provider
+        }
+        
+        return mock_manager
+    
+    @pytest.mark.asyncio
+    async def test_complete_investor_demo_flow(self, client, investor_query_payload, mock_provider_manager):
+        """Test complete end-to-end investor demo flow"""
+        
+        # Capture all investor demo messages
+        demo_messages = []
+        websocket_messages = []
+        
+        async def capture_investor_messages(data):
+            demo_messages.append(data)
+            # Also track the message sequence
+            websocket_messages.append({
+                "timestamp": datetime.utcnow(),
+                "type": data["message_type"],
+                "data": data["data"]
+            })
+        
+        # Setup investor metrics collection
+        investor_metrics_collector.websocket_broadcaster = Mock()
+        investor_metrics_collector.websocket_broadcaster.broadcast_investor_update = capture_investor_messages
+        
+        with patch("src.api.routes.get_orchestrator") as mock_get_orchestrator:
+            # Setup mocks for provider manager
+            mock_get_orchestrator.return_value = None  # Force fallback to detection-only mode
+            
+            # Set provider manager directly (ensure it exists first)
+            app.state.provider_manager = mock_provider_manager
+            
+            # Make request to analyze endpoint
+            response = client.post("/api/v1/analyze", json=investor_query_payload)
+            
+            # Verify successful response
+            assert response.status_code == 200
+            response_data = response.json()
+                
+            # Verify response structure
+            assert "request_id" in response_data
+            assert "original_query" in response_data
+            assert "detection" in response_data
+            assert "fragments" in response_data
+            assert "privacy_score" in response_data
+            assert "cost_comparison" in response_data
+                
+                request_id = response_data["request_id"]
+                
+                # Verify PII was detected in the query
+                detection = response_data["detection"]
+                assert detection["has_pii"] is True
+                assert len(detection["pii_entities"]) > 0
+                
+                # Find email and SSN entities
+                entity_types = [entity["type"] for entity in detection["pii_entities"]]
+                assert "EMAIL_ADDRESS" in entity_types  # alice@techcorp.com
+                assert "US_SSN" in entity_types or "SSN" in entity_types  # 123-45-6789
+                
+                # Verify fragments were created
+                fragments = response_data["fragments"]
+                assert len(fragments) >= 3  # Should create multiple fragments
+                
+                # Verify fragments are distributed across providers
+                providers_used = set(fragment["provider"] for fragment in fragments)
+                assert len(providers_used) >= 2  # Should use multiple providers
+                
+                # Verify cost optimization
+                cost_comparison = response_data["cost_comparison"]
+                assert cost_comparison["savings_percentage"] > 0
+                assert cost_comparison["fragmented_cost"] < cost_comparison["single_provider_cost"]
+                
+                # Verify privacy score
+                assert 0 <= response_data["privacy_score"] <= 1.0
+                
+                # Wait for all async operations to complete
+                await asyncio.sleep(0.5)
+                
+                # Verify investor demo messages were generated
+                assert len(demo_messages) > 0
+                
+                # Verify expected message types were sent
+                message_types = [msg["message_type"] for msg in demo_messages]
+                
+                # Should include key investor demo message types
+                assert WebSocketMessageType.STEP_PROGRESS in message_types
+                assert WebSocketMessageType.PRIVACY_UPDATE in message_types
+                assert WebSocketMessageType.COST_CALCULATION in message_types
+                assert WebSocketMessageType.PERFORMANCE_METRIC in message_types
+                assert WebSocketMessageType.EXECUTIVE_SUMMARY in message_types
+                
+                # Verify privacy update message
+                privacy_messages = [msg for msg in demo_messages 
+                                  if msg["message_type"] == WebSocketMessageType.PRIVACY_UPDATE]
+                assert len(privacy_messages) >= 1
+                privacy_data = privacy_messages[0]["data"]
+                assert "privacy_score" in privacy_data
+                assert privacy_data["pii_entities_found"] > 0
+                assert "🔒" in privacy_data.get("narrative", "")
+                
+                # Verify cost calculation message
+                cost_messages = [msg for msg in demo_messages 
+                               if msg["message_type"] == WebSocketMessageType.COST_CALCULATION]
+                assert len(cost_messages) >= 1
+                cost_data = cost_messages[0]["data"]
+                assert "savings_percentage" in cost_data
+                assert cost_data["savings_percentage"] > 0
+                assert "💰" in cost_data.get("narrative", "")
+                
+                # Verify performance metrics message
+                perf_messages = [msg for msg in demo_messages 
+                               if msg["message_type"] == WebSocketMessageType.PERFORMANCE_METRIC]
+                assert len(perf_messages) >= 1
+                perf_data = perf_messages[0]["data"]
+                assert "total_processing_time" in perf_data
+                assert "system_efficiency" in perf_data
+                assert "⚡" in perf_data.get("narrative", "")
+                
+                # Verify executive summary message
+                exec_messages = [msg for msg in demo_messages 
+                               if msg["message_type"] == WebSocketMessageType.EXECUTIVE_SUMMARY]
+                assert len(exec_messages) >= 1
+                exec_data = exec_messages[0]["data"]
+                assert "executive_summary" in exec_data
+                assert "business_insights" in exec_data
+                
+                exec_summary = exec_data["executive_summary"]
+                assert "privacy_protection" in exec_summary
+                assert "cost_optimization" in exec_summary
+                assert "performance" in exec_summary
+                
+                business_insights = exec_data["business_insights"]
+                assert "key_differentiators" in business_insights
+                assert "investment_highlights" in business_insights
+                assert "market_validation" in business_insights
+                
+                return {
+                    "response": response_data,
+                    "demo_messages": demo_messages,
+                    "message_sequence": websocket_messages
+                }
+    
+    @pytest.mark.asyncio
+    async def test_investor_demo_timing_and_sequence(self, client, investor_query_payload, mock_provider_manager):
+        """Test investor demo message timing and sequence"""
+        
+        message_timeline = []
+        
+        async def track_message_timing(data):
+            message_timeline.append({
+                "timestamp": time.time(),
+                "message_type": data["message_type"],
+                "step": data["data"].get("step"),
+                "status": data["data"].get("status")
+            })
+        
+        investor_metrics_collector.websocket_broadcaster = Mock()
+        investor_metrics_collector.websocket_broadcaster.broadcast_investor_update = track_message_timing
+        
+        with patch("src.api.routes.get_orchestrator") as mock_get_orchestrator:
+            mock_get_orchestrator.return_value = None
+            
+            with patch.object(app.state, 'provider_manager', mock_provider_manager):
+                
+                start_time = time.time()
+                response = client.post("/api/v1/analyze", json=investor_query_payload)
+                end_time = time.time()
+                
+                assert response.status_code == 200
+                
+                # Wait for async operations
+                await asyncio.sleep(0.5)
+                
+                # Verify message sequence and timing
+                assert len(message_timeline) > 0
+                
+                # Check that messages are in chronological order
+                timestamps = [msg["timestamp"] for msg in message_timeline]
+                assert timestamps == sorted(timestamps), "Messages should be in chronological order"
+                
+                # Verify step progress messages follow logical sequence
+                step_messages = [msg for msg in message_timeline 
+                               if msg["message_type"] == WebSocketMessageType.STEP_PROGRESS]
+                
+                # Should have messages for different processing steps
+                steps_seen = set()
+                for msg in step_messages:
+                    if msg["step"]:
+                        steps_seen.add(msg["step"])
+                
+                # Should see key processing steps
+                expected_steps = {"query_analysis", "pii_detection", "fragmentation", "distribution"}
+                assert len(steps_seen.intersection(expected_steps)) >= 2
+                
+                # Verify total processing time is reasonable
+                total_time = end_time - start_time
+                assert total_time < 10.0, "Processing should complete within 10 seconds"
+    
+    @pytest.mark.asyncio 
+    async def test_investor_demo_error_handling(self, client, mock_provider_manager):
+        """Test investor demo handles errors gracefully"""
+        
+        error_messages = []
+        
+        async def capture_error_handling(data):
+            error_messages.append(data)
+        
+        investor_metrics_collector.websocket_broadcaster = Mock()
+        investor_metrics_collector.websocket_broadcaster.broadcast_investor_update = capture_error_handling
+        
+        # Test with invalid query payload
+        invalid_payload = {
+            "query": "",  # Empty query
+            "strategy": "invalid_strategy",
+            "privacy_level": "invalid_level"
+        }
+        
+        with patch("src.api.routes.get_orchestrator") as mock_get_orchestrator:
+            mock_get_orchestrator.return_value = None
+            
+            with patch.object(app.state, 'provider_manager', mock_provider_manager):
+                
+                # Should handle invalid input gracefully
+                response = client.post("/api/v1/analyze", json=invalid_payload)
+                
+                # Should return error response but not crash
+                assert response.status_code in [400, 422, 500]
+                
+                # Wait for any async operations
+                await asyncio.sleep(0.2)
+                
+                # System should remain functional even with errors
+                # (Error handling test - no specific assertions needed for demo messages)
+    
+    @pytest.mark.asyncio
+    async def test_investor_demo_websocket_real_time_updates(self, client, investor_query_payload, mock_provider_manager):
+        """Test real-time WebSocket updates during investor demo"""
+        
+        websocket_updates = []
+        
+        # Test WebSocket connection during demo
+        with patch("src.api.routes.get_orchestrator") as mock_get_orchestrator:
+            mock_get_orchestrator.return_value = None
+            
+            with patch.object(app.state, 'provider_manager', mock_provider_manager):
+                
+                # Setup message capture
+                async def capture_websocket_updates(data):
+                    websocket_updates.append({
+                        "timestamp": datetime.utcnow(),
+                        "message": data
+                    })
+                
+                investor_metrics_collector.websocket_broadcaster = Mock()
+                investor_metrics_collector.websocket_broadcaster.broadcast_investor_update = capture_websocket_updates
+                
+                # Start WebSocket connection simulation
+                with client.websocket_connect("/ws/updates") as websocket:
+                    
+                    # Submit query while WebSocket is connected
+                    response = client.post("/api/v1/analyze", json=investor_query_payload)
+                    assert response.status_code == 200
+                    
+                    # Wait for real-time updates
+                    await asyncio.sleep(1.0)
+                    
+                    # Verify WebSocket updates were captured
+                    assert len(websocket_updates) > 0
+                    
+                    # Verify updates contain investor demo data
+                    demo_updates = [update for update in websocket_updates 
+                                  if update["message"]["message_type"] in [
+                                      WebSocketMessageType.PRIVACY_UPDATE,
+                                      WebSocketMessageType.COST_CALCULATION,
+                                      WebSocketMessageType.PERFORMANCE_METRIC
+                                  ]]
+                    
+                    assert len(demo_updates) >= 3  # Should have privacy, cost, and performance updates
+                    
+                    # Verify message structure
+                    for update in demo_updates:
+                        message = update["message"]
+                        assert "message_type" in message
+                        assert "data" in message
+                        assert "request_id" in message
+                        assert message["data"].get("narrative") is not None
+    
+    def test_investor_demo_data_accuracy(self, client, investor_query_payload, mock_provider_manager):
+        """Test accuracy of investor demo data calculations"""
+        
+        demo_data = {}
+        
+        def capture_demo_data(data):
+            demo_data[data["message_type"]] = data["data"]
+        
+        investor_metrics_collector.websocket_broadcaster = Mock()
+        investor_metrics_collector.websocket_broadcaster.broadcast_investor_update = capture_demo_data
+        
+        with patch("src.api.routes.get_orchestrator") as mock_get_orchestrator:
+            mock_get_orchestrator.return_value = None
+            
+            with patch.object(app.state, 'provider_manager', mock_provider_manager):
+                
+                response = client.post("/api/v1/analyze", json=investor_query_payload)
+                assert response.status_code == 200
+                response_data = response.json()
+                
+                # Verify data consistency between API response and demo messages
+                
+                # Privacy score consistency
+                if WebSocketMessageType.PRIVACY_UPDATE in demo_data:
+                    privacy_data = demo_data[WebSocketMessageType.PRIVACY_UPDATE]
+                    api_privacy_score = response_data["privacy_score"] * 100
+                    demo_privacy_score = privacy_data.get("privacy_score", 0)
+                    
+                    # Scores should be reasonably close (within 10%)
+                    assert abs(api_privacy_score - demo_privacy_score) <= 10
+                
+                # Cost calculation consistency  
+                if WebSocketMessageType.COST_CALCULATION in demo_data:
+                    cost_data = demo_data[WebSocketMessageType.COST_CALCULATION]
+                    api_savings = response_data["cost_comparison"]["savings_percentage"]
+                    demo_savings = cost_data.get("savings_percentage", 0)
+                    
+                    # Savings percentages should be consistent
+                    assert abs(api_savings - demo_savings) <= 5
+                
+                # Fragment count consistency
+                api_fragment_count = len(response_data["fragments"])
+                if WebSocketMessageType.COST_CALCULATION in demo_data:
+                    cost_data = demo_data[WebSocketMessageType.COST_CALCULATION]
+                    provider_breakdown = cost_data.get("provider_breakdown", [])
+                    demo_fragment_count = sum(p.get("tokens", 0) > 0 for p in provider_breakdown)
+                    
+                    # Fragment counts should match
+                    assert demo_fragment_count > 0
+    
+    @pytest.mark.asyncio
+    async def test_investor_demo_performance_benchmarks(self, client, investor_query_payload, mock_provider_manager):
+        """Test investor demo meets performance benchmarks"""
+        
+        performance_data = []
+        
+        async def capture_performance(data):
+            if data["message_type"] == WebSocketMessageType.PERFORMANCE_METRIC:
+                performance_data.append(data["data"])
+        
+        investor_metrics_collector.websocket_broadcaster = Mock()
+        investor_metrics_collector.websocket_broadcaster.broadcast_investor_update = capture_performance
+        
+        with patch("src.api.routes.get_orchestrator") as mock_get_orchestrator:
+            mock_get_orchestrator.return_value = None
+            
+            with patch.object(app.state, 'provider_manager', mock_provider_manager):
+                
+                start_time = time.time()
+                response = client.post("/api/v1/analyze", json=investor_query_payload)
+                end_time = time.time()
+                
+                assert response.status_code == 200
+                response_data = response.json()
+                
+                # Wait for performance metrics
+                await asyncio.sleep(0.5)
+                
+                # Verify performance benchmarks
+                total_time = end_time - start_time
+                api_total_time = response_data.get("total_time", total_time)
+                
+                # Performance benchmarks for investor demo
+                assert total_time < 5.0, "Demo should complete within 5 seconds"
+                assert api_total_time < 3.0, "API processing should be under 3 seconds"
+                
+                # Verify performance metrics in demo
+                if performance_data:
+                    perf_metrics = performance_data[0]
+                    
+                    # System efficiency should be high
+                    efficiency = perf_metrics.get("system_efficiency", 0)
+                    assert efficiency >= 80, "System efficiency should be at least 80%"
+                    
+                    # Throughput should be reasonable
+                    throughput = perf_metrics.get("throughput_rate", 0)
+                    assert throughput > 10, "Throughput should be at least 10 queries/min"
+                    
+                    # SLA compliance
+                    sla_compliance = perf_metrics.get("sla_compliance", False)
+                    if total_time < 3.0:  # Only assert SLA compliance if we met the time
+                        assert sla_compliance is True

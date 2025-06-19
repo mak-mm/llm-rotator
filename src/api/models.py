@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, List, Dict, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProviderType(str, Enum):
@@ -36,7 +36,8 @@ class QueryRequest(BaseModel):
         description="Force orchestrator usage (auto-determined if not provided)"
     )
 
-    @validator('query')
+    @field_validator('query')
+    @classmethod
     def validate_query(cls, v):
         if not v.strip():
             raise ValueError("Query cannot be empty or only whitespace")
@@ -77,6 +78,7 @@ class AnalysisResponse(BaseModel):
     original_query: str = Field(..., description="Original user query")
     detection: DetectionResult = Field(..., description="Detection analysis results")
     fragments: list[Fragment] = Field(..., description="Query fragments")
+    fragment_responses: list[FragmentResponse] = Field(default_factory=list, description="Individual provider responses")
     aggregated_response: str = Field(..., description="Final aggregated response")
     privacy_score: float = Field(..., ge=0.0, le=1.0, description="Privacy preservation score")
     total_time: float = Field(..., description="Total processing time (seconds)")

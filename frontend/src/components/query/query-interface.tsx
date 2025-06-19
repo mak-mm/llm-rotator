@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,12 +18,18 @@ import {
   Shield, 
   Eye, 
   EyeOff, 
-  Loader2 
+  Loader2,
+  TrendingUp,
+  Zap,
+  Brain,
+  ChevronRight 
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAnalyzeQuery, useQueryStatus } from "@/hooks/useQuery";
-import { useWebSocketSubscription } from "@/hooks/useWebSocket";
 import { useQuery } from "@/contexts/query-context";
+import { InvestorDashboard } from "@/components/visualization/investor-dashboard";
+import { useSSE } from "@/hooks/useSSE";
+import { queryService } from "@/lib/api";
 import type { AnalyzeRequest, AnalyzeResponse } from "@/lib/api";
 
 const PRIVACY_LEVELS = [
@@ -125,36 +131,87 @@ export function QueryInterface() {
   const [query, setQuery] = useState("");
   const [privacyLevel, setPrivacyLevel] = useState<"low" | "medium" | "high">("medium");
   const [showPrivacyViz, setShowPrivacyViz] = useState(true);
-  const [requestId, setRequestId] = useState<string>();
   const [currentResponse, setCurrentResponse] = useState<AnalyzeResponse | null>(null);
+  const [isPollingResult, setIsPollingResult] = useState(false);
+  const [shouldConnectSSE, setShouldConnectSSE] = useState(false);
 
-  // Context for sharing query state
-  const { setCurrentQuery, setQueryResult, setIsProcessing } = useQuery();
+  // Context for sharing query state and investor metrics
+  const { 
+    setCurrentQuery, 
+    setQueryResult, 
+    setIsProcessing, 
+    investorMetrics, 
+    realTimeData, 
+    resetInvestorData,
+    requestId,
+    setRequestId,
+    updateProcessingStep 
+  } = useQuery();
 
   // Hooks for API calls
   const analyzeMutation = useAnalyzeQuery();
   const statusQuery = useQueryStatus(requestId, !!requestId);
 
-  // Subscribe to real-time query progress updates
-  useWebSocketSubscription('query_progress', (data) => {
-    if (data.request_id === requestId) {
-      console.log('🔄 Real-time query progress update:', data);
-      toast.info(`Query progress: ${data.status}`, {
-        duration: 2000,
-      });
+  // SSE connection for real-time updates - only connect after a delay to ensure backend is ready
+  const sseUrl = requestId && shouldConnectSSE ? `/api/v1/stream/${requestId}` : null;
+  const { isConnected } = useSSE(sseUrl, {
+    onMessage: (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('🔄 SSE Update:', data);
+        
+        // Handle step progress updates
+        if (data.type === 'step_progress' && data.data) {
+          const { step, status, progress, message } = data.data;
+          updateProcessingStep(step, status, progress, message);
+          
+          // If final response is completed, fetch the result
+          if (step === 'final_response' && status === 'completed') {
+            setIsPollingResult(true);
+            fetchFinalResult();
+          }
+        }
+        
+        // Also handle the complete event
+        if (data.type === 'complete') {
+          // Final response is ready, fetch the result
+          setIsPollingResult(true);
+          fetchFinalResult();
+        }
+      } catch (error) {
+        console.error('Failed to parse SSE message:', error);
+      }
+    },
+    onError: (error) => {
+      console.error('SSE Error:', error);
+    },
+    onOpen: () => {
+      console.log('✅ SSE Connected for request:', requestId);
     }
   });
 
-  // Handle successful analysis
-  useEffect(() => {
-    if (statusQuery.data?.status === 'completed') {
-      // In a real implementation, we'd get the full response from the status
-      // For now, we'll use the analysis response directly
+  // Function to fetch final result
+  const fetchFinalResult = async () => {
+    if (!requestId) return;
+    
+    try {
+      const result = await queryService.getResult(requestId);
+      console.log('✅ Got final result:', result);
+      
+      // Update state with the final result
+      setCurrentResponse(result);
+      setQueryResult(result);
+      setIsProcessing(false);
+      setIsPollingResult(false);
+      
       toast.success('Query processing completed');
-    } else if (statusQuery.data?.status === 'failed') {
-      toast.error('Query processing failed');
+    } catch (error) {
+      console.error('Failed to fetch final result:', error);
+      setIsProcessing(false);
+      setIsPollingResult(false);
+      toast.error('Failed to get query result');
     }
-  }, [statusQuery.data]);
+  };
 
   const handleSubmit = async () => {
     if (!query.trim()) {
@@ -164,28 +221,35 @@ export function QueryInterface() {
 
     const request: AnalyzeRequest = {
       query: query.trim(),
-      strategy: "hybrid", // Use hybrid strategy by default
+      strategy: "hybrid", // Use hybrid strategy by default  
       use_orchestrator: true, // Enable orchestrator for complex queries
     };
 
     try {
-      // Update context to show processing state
+      // Reset state for new query
+      resetInvestorData();
+      setShouldConnectSSE(false); // Reset SSE connection
+      setRequestId(null); // Clear old request ID
+      
+      // Update context to show processing state - this updates the 3D visualization
       setCurrentQuery(query.trim());
       setIsProcessing(true);
       setQueryResult(null);
+      
+      // Log for debugging
+      console.log('🚀 Query submitted, updating visualization with processing state');
 
-      const result = await analyzeMutation.mutateAsync(request);
+      const initialResponse = await analyzeMutation.mutateAsync(request);
       
-      // Update context with results
-      console.log('🔄 Query Interface - Setting query result:', result);
-      console.log('🔄 Query Interface - Context setQueryResult function:', setQueryResult);
-      setCurrentResponse(result);
-      setRequestId(result.request_id);
-      setQueryResult(result);
-      setIsProcessing(false);
+      // Store the request ID for SSE connection
+      console.log('🚀 Got request ID:', initialResponse.request_id);
+      setRequestId(initialResponse.request_id);
       
-      // Additional verification
-      console.log('🔄 Query Interface - Result set in context, should trigger visualization update');
+      // Delay SSE connection to ensure backend processing has started
+      setTimeout(() => {
+        console.log('🔄 Enabling SSE connection for:', initialResponse.request_id);
+        setShouldConnectSSE(true);
+      }, 1000); // 1 second delay
     } catch (error) {
       console.error('Query submission failed:', error);
       setIsProcessing(false);
@@ -282,13 +346,20 @@ export function QueryInterface() {
               </Button>
             </div>
 
-            {analyzeMutation.isPending && (
-              <div className="space-y-2">
+            {(analyzeMutation.isPending || isPollingResult) && (
+              <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <div className="flex justify-between text-sm">
-                  <span>Processing query...</span>
-                  <span>Analyzing privacy requirements</span>
+                  <span className="font-medium">
+                    {isPollingResult ? 'Fetching results...' : 'Processing query...'}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {isConnected ? '🟢 Real-time updates connected' : 'This may take up to 2 minutes'}
+                  </span>
                 </div>
                 <Progress value={33} className="w-full" />
+                <p className="text-xs text-muted-foreground">
+                  🔄 Detecting PII → Fragmenting query → Sending to LLM providers → Aggregating responses
+                </p>
               </div>
             )}
           </CardContent>
@@ -356,22 +427,230 @@ export function QueryInterface() {
                 </div>
               </div>
               
-              <div className="border-t pt-4">
-                <h4 className="font-semibold mb-2">Aggregated Response:</h4>
-                <div className="bg-muted p-4 rounded-lg">
-                  <p className="text-sm">{currentResponse.aggregated_response}</p>
+              <div className="border-t pt-4 space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">Final Aggregated Response:</h4>
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm">{currentResponse.aggregated_response}</p>
+                  </div>
+                </div>
+                
+                {/* Show response aggregation process */}
+                <div className="text-center py-4">
+                  <div className="inline-flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                    <div className="h-px w-12 bg-border" />
+                    <span>Response Aggregation Process</span>
+                    <div className="h-px w-12 bg-border" />
+                  </div>
+                  
+                  {/* Aggregation Flow Visualization */}
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4 rounded-lg">
+                    <div className="flex items-center justify-center gap-2 text-xs flex-wrap">
+                      {/* Show each fragment */}
+                      {currentResponse.fragments.map((fragment, idx) => {
+                        const providerColors = {
+                          openai: "bg-green-100 dark:bg-green-900/20 border-green-300",
+                          anthropic: "bg-blue-100 dark:bg-blue-900/20 border-blue-300",
+                          google: "bg-amber-100 dark:bg-amber-900/20 border-amber-300"
+                        };
+                        
+                        return (
+                          <React.Fragment key={fragment.id}>
+                            <div className="flex flex-col items-center">
+                              <div className={`w-20 h-20 rounded-lg flex items-center justify-center border ${providerColors[fragment.provider] || ""}`}>
+                                <span className="font-medium text-center px-1">{fragment.provider}</span>
+                              </div>
+                              <span className="mt-1 text-muted-foreground">Fragment {idx + 1}</span>
+                            </div>
+                            
+                            {idx < currentResponse.fragments.length - 1 && (
+                              <div className="flex items-center gap-1">
+                                <div className="h-px w-4 bg-border" />
+                              </div>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                      
+                      {currentResponse.fragments.length > 0 && (
+                        <>
+                          <div className="flex items-center gap-1">
+                            <div className="h-px w-8 bg-border" />
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          
+                          <div className="flex flex-col items-center">
+                            <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary">
+                              <div className="text-center">
+                                <Brain className="h-6 w-6 mx-auto mb-1" />
+                                <span className="font-medium text-xs">AI Aggregator</span>
+                              </div>
+                            </div>
+                            <span className="mt-1 text-muted-foreground">Weighted Merge</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-1">
+                            <div className="h-px w-8 bg-border" />
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          
+                          <div className="flex flex-col items-center">
+                            <div className="w-20 h-20 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center border border-purple-300">
+                              <span className="font-medium">Final</span>
+                            </div>
+                            <span className="mt-1 text-muted-foreground">Response</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground mt-3">
+                      {currentResponse.fragments.length === 0 
+                        ? "Query sent directly to a single provider without fragmentation"
+                        : `${currentResponse.fragments.length} fragment${currentResponse.fragments.length > 1 ? 's' : ''} processed in parallel, then intelligently merged`
+                      }
+                    </p>
+                  </div>
                 </div>
               </div>
               
-              <div className="border-t pt-4">
-                <h4 className="font-semibold mb-2">Fragment Distribution:</h4>
-                <div className="space-y-2">
-                  {currentResponse.fragments.map((fragment, index) => (
-                    <div key={fragment.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                      <span className="text-sm">Fragment {index + 1}</span>
-                      <Badge variant="outline">{fragment.provider}</Badge>
+              {/* Detailed Fragment Analysis */}
+              <div className="border-t pt-4 space-y-4">
+                <h4 className="font-semibold">Fragment Distribution & Analysis:</h4>
+                
+                {/* Detection Summary */}
+                <div className="space-y-3">
+                  {/* PII Detection */}
+                  {currentResponse.detection.has_pii && (
+                    <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                      <h5 className="font-medium text-sm mb-2 flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        PII Detected & Anonymized:
+                      </h5>
+                      <div className="flex flex-wrap gap-2">
+                        {currentResponse.detection.pii_entities.map((entity, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {entity.type}: "{entity.text}" → {entity.type}_{idx + 1}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  ))}
+                  )}
+                  
+                  {/* Code Detection */}
+                  {currentResponse.detection.has_code && (
+                    <div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                      <h5 className="font-medium text-sm mb-2 flex items-center gap-2">
+                        <Zap className="h-4 w-4" />
+                        Code Detected:
+                      </h5>
+                      <Badge variant="secondary" className="text-xs">
+                        Language: {currentResponse.detection.code_language || "Unknown"}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Fragment Details */}
+                <div className="space-y-3">
+                  {currentResponse.fragments.map((fragment, index) => {
+                    const providerColors = {
+                      openai: "border-green-500 bg-green-50 dark:bg-green-950/20",
+                      anthropic: "border-blue-500 bg-blue-50 dark:bg-blue-950/20",
+                      google: "border-amber-500 bg-amber-50 dark:bg-amber-950/20"
+                    };
+                    
+                    return (
+                      <div 
+                        key={fragment.id} 
+                        className={`p-4 rounded-lg border-2 ${providerColors[fragment.provider] || "border-gray-300"}`}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h5 className="font-medium">Fragment {index + 1}</h5>
+                            <p className="text-xs text-muted-foreground">ID: {fragment.id}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{fragment.provider}</Badge>
+                            {fragment.anonymized && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Eye className="h-3 w-3 mr-1" />
+                                Anonymized
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {Math.round(fragment.context_percentage * 100)}% context
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-2 p-3 bg-white dark:bg-gray-900 rounded border">
+                          <p className="text-sm font-mono whitespace-pre-wrap">{fragment.content}</p>
+                        </div>
+                        
+                        {/* Fragment Response */}
+                        {(() => {
+                          const fragmentResponse = currentResponse.fragment_responses?.find(
+                            fr => fr.fragment_id === fragment.id
+                          );
+                          
+                          if (fragmentResponse) {
+                            return (
+                              <div className="mt-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-medium text-muted-foreground">Provider Response:</p>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-xs">
+                                      {fragmentResponse.processing_time.toFixed(2)}s
+                                    </Badge>
+                                    {fragmentResponse.tokens_used && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {fragmentResponse.tokens_used} tokens
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                                  <p className="text-sm whitespace-pre-wrap">{fragmentResponse.response}</p>
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded border border-dashed">
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Provider Response:</p>
+                              <p className="text-sm italic text-muted-foreground">
+                                Processing fragment with {fragment.provider.toUpperCase()}...
+                              </p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Cost Breakdown */}
+                <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <h5 className="font-medium text-sm mb-2 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Cost Analysis:
+                  </h5>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Fragmented:</span>
+                      <p className="font-mono">${currentResponse.cost_comparison.fragmented_cost.toFixed(4)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Single Provider:</span>
+                      <p className="font-mono">${currentResponse.cost_comparison.single_provider_cost.toFixed(4)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Saved:</span>
+                      <p className="font-mono text-green-600">{currentResponse.cost_comparison.savings_percentage}%</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>

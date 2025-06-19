@@ -96,8 +96,8 @@ class QueryFragmenter:
                 fragments=fragments,
                 strategy_used=str(strategy),
                 fragmentation_metadata={
-                    "detection_report": detection_report.dict(),
-                    "config_used": effective_config.dict(),
+                    "detection_report": detection_report.model_dump(),
+                    "config_used": effective_config.model_dump(),
                     "metrics": FragmentationMetrics(
                         fragmentation_time_ms=fragmentation_time,
                         detection_time_ms=detection_time,
@@ -106,7 +106,7 @@ class QueryFragmenter:
                         fragments_created=len(fragments),
                         sensitive_data_isolated=any(f.contains_sensitive_data for f in fragments),
                         privacy_preservation_score=self._calculate_privacy_score(detection_report, fragments)
-                    ).dict()
+                    ).model_dump()
                 }
             )
 

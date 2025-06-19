@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useProviderStatus } from "@/hooks/useProviders";
-import { useWebSocketSubscription } from "@/hooks/useWebSocket";
 import { RealTimeIndicator } from "@/components/common/real-time-indicator";
 import { toast } from "sonner";
 
@@ -35,44 +34,6 @@ interface ProviderData {
   lastUpdated: Date;
 }
 
-const mockProviderData: ProviderData[] = [
-  {
-    id: "openai",
-    name: "OpenAI",
-    model: "GPT-4.1",
-    status: "online",
-    latency: 1250,
-    successRate: 99.2,
-    requestsToday: 45,
-    cost: 0.0234,
-    capabilities: ["Text Generation", "Code Analysis", "Function Calling", "Vision"],
-    lastUpdated: new Date(),
-  },
-  {
-    id: "anthropic",
-    name: "Anthropic",
-    model: "Claude Sonnet 4",
-    status: "online",
-    latency: 1800,
-    successRate: 98.7,
-    requestsToday: 38,
-    cost: 0.0189,
-    capabilities: ["Text Generation", "Code Analysis", "Sensitive Data", "Vision"],
-    lastUpdated: new Date(),
-  },
-  {
-    id: "google",
-    name: "Google",
-    model: "Gemini 2.5 Flash",
-    status: "online",
-    latency: 920,
-    successRate: 97.9,
-    requestsToday: 22,
-    cost: 0.0098,
-    capabilities: ["Text Generation", "Code Analysis", "Vision", "Function Calling"],
-    lastUpdated: new Date(),
-  },
-];
 
 const statusColors = {
   online: { bg: "bg-green-50 dark:bg-green-950/20", border: "border-green-200 dark:border-green-800", icon: "text-green-500" },
@@ -97,13 +58,7 @@ export function ProviderStatus() {
   // Use real API data
   const { data: apiResponse, isLoading, error, refetch } = useProviderStatus();
 
-  // Subscribe to real-time provider status updates
-  useWebSocketSubscription('provider_status', (data) => {
-    console.log('🔄 Real-time provider status update received:', data);
-    toast.success("Provider status updated in real-time", {
-      duration: 2000,
-    });
-  });
+  // TODO: Add SSE subscription for real-time provider status updates if needed
 
   const handleRefresh = async () => {
     try {
@@ -139,7 +94,7 @@ export function ProviderStatus() {
     cost: p.cost,
     capabilities: p.capabilities,
     lastUpdated: new Date(p.last_updated),
-  })) || mockProviderData; // Fallback to mock data if API fails
+  })) || []; // No fallback mock data
 
   // Handle loading state
   if (isLoading) {

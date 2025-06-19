@@ -138,3 +138,31 @@ class RedisClient:
         except Exception as e:
             logger.error(f"Failed to get provider usage: {str(e)}")
             return 0
+
+    async def set(self, key: str, value: dict, expire: Optional[int] = None) -> bool:
+        """Set a key-value pair in Redis"""
+        try:
+            serialized = json.dumps(value)
+            if expire:
+                await self.client.setex(key, expire, serialized)
+            else:
+                await self.client.set(key, serialized)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set key {key}: {str(e)}")
+            return False
+
+    async def get(self, key: str) -> dict | None:
+        """Get a value from Redis"""
+        try:
+            data = await self.client.get(key)
+            if data:
+                return json.loads(data)
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get key {key}: {str(e)}")
+            return None
+
+
+# Create a global instance
+redis_client = RedisClient()
