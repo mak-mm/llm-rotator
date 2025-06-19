@@ -128,13 +128,20 @@ export function useSSE(url: string | null, options: SSEOptions = {}) {
   }, []);
 
   useEffect(() => {
+    // Disconnect any existing connection first
+    disconnect();
+    
     if (url) {
-      connect();
+      // Small delay to ensure clean disconnect
+      const timer = setTimeout(() => {
+        connect();
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        disconnect();
+      };
     }
-
-    return () => {
-      disconnect();
-    };
   }, [url]); // Only depend on URL changes, not the callbacks
 
   return {

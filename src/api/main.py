@@ -182,7 +182,7 @@ if os.getenv("ENVIRONMENT") == "development":
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=frontend_urls,
+    allow_origins=["*"],  # Allow all origins in development
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -192,10 +192,14 @@ app.add_middleware(
 app.include_router(router)
 
 # WebSocket endpoints disabled - using SSE instead
-# @app.websocket("/ws/updates")
-# async def websocket_updates(websocket: WebSocket):
-#     """WebSocket endpoint for real-time updates"""
-#     await websocket_endpoint(websocket)
+@app.get("/ws/updates")
+async def websocket_updates_disabled():
+    """Disabled WebSocket endpoint - using SSE instead"""
+    return {
+        "error": "WebSocket endpoint disabled",
+        "message": "This system now uses Server-Sent Events (SSE) for real-time updates",
+        "alternative": "Use /api/v1/stream/{request_id} for SSE streaming"
+    }
 
 # @app.websocket("/ws/logs")
 # async def websocket_logs(websocket: WebSocket):
@@ -239,6 +243,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "src.api.main:app",
         host=os.getenv("API_HOST", "0.0.0.0"),
-        port=int(os.getenv("API_PORT", "8000")),
+        port=int(os.getenv("API_PORT", "8003")),
         reload=os.getenv("API_RELOAD", "true").lower() == "true"
     )

@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { useAnalyzeQuery, useQueryStatus } from "@/hooks/useQuery";
 import { useQuery } from "@/contexts/query-context";
 import { InvestorDashboard } from "@/components/visualization/investor-dashboard";
-import { useSSE } from "@/hooks/useSSE";
+import { useSSEContext, useSSESubscription } from "@/contexts/sse-context";
 import { queryService } from "@/lib/api";
 import type { AnalyzeRequest, AnalyzeResponse } from "@/lib/api";
 
@@ -133,7 +133,7 @@ export function QueryInterface() {
   const [showPrivacyViz, setShowPrivacyViz] = useState(true);
   const [currentResponse, setCurrentResponse] = useState<AnalyzeResponse | null>(null);
   const [isPollingResult, setIsPollingResult] = useState(false);
-  const [shouldConnectSSE, setShouldConnectSSE] = useState(false);
+  const { setActiveRequestId, isConnected } = useSSEContext();
 
   // Context for sharing query state and investor metrics
   const { 
@@ -145,50 +145,13 @@ export function QueryInterface() {
     resetInvestorData,
     requestId,
     setRequestId,
-    updateProcessingStep 
+    updateProcessingStep,
+    updateRealTimeData
   } = useQuery();
 
   // Hooks for API calls
   const analyzeMutation = useAnalyzeQuery();
   const statusQuery = useQueryStatus(requestId, !!requestId);
-
-  // SSE connection for real-time updates - only connect after a delay to ensure backend is ready
-  const sseUrl = requestId && shouldConnectSSE ? `/api/v1/stream/${requestId}` : null;
-  const { isConnected } = useSSE(sseUrl, {
-    onMessage: (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('🔄 SSE Update:', data);
-        
-        // Handle step progress updates
-        if (data.type === 'step_progress' && data.data) {
-          const { step, status, progress, message } = data.data;
-          updateProcessingStep(step, status, progress, message);
-          
-          // If final response is completed, fetch the result
-          if (step === 'final_response' && status === 'completed') {
-            setIsPollingResult(true);
-            fetchFinalResult();
-          }
-        }
-        
-        // Also handle the complete event
-        if (data.type === 'complete') {
-          // Final response is ready, fetch the result
-          setIsPollingResult(true);
-          fetchFinalResult();
-        }
-      } catch (error) {
-        console.error('Failed to parse SSE message:', error);
-      }
-    },
-    onError: (error) => {
-      console.error('SSE Error:', error);
-    },
-    onOpen: () => {
-      console.log('✅ SSE Connected for request:', requestId);
-    }
-  });
 
   // Function to fetch final result
   const fetchFinalResult = async () => {
@@ -204,14 +167,62 @@ export function QueryInterface() {
       setIsProcessing(false);
       setIsPollingResult(false);
       
+      // Clear active request ID since processing is complete
+      setActiveRequestId(null);
+      
       toast.success('Query processing completed');
     } catch (error) {
       console.error('Failed to fetch final result:', error);
       setIsProcessing(false);
       setIsPollingResult(false);
+      
+      // Clear active request ID on error
+      setActiveRequestId(null);
+      
       toast.error('Failed to get query result');
     }
   };
+
+  // Subscribe to step progress updates
+  useSSESubscription(['step_progress', 'investor_kpis', 'complete'], (message) => {
+    console.log('🔄 SSE Update:', JSON.stringify(message, null, 2));
+    
+    // Handle step progress updates
+    if (message.type === 'step_progress' && message.data) {
+      const { step, status, progress, message: stepMessage } = message.data;
+      console.log(`📊 Step Update: ${step} -> ${status} (${progress}%) - ${stepMessage || 'no message'}`);
+      updateProcessingStep(step, status, progress, stepMessage);
+      
+      // If final response is completed, fetch the result
+      if (step === 'final_response' && status === 'completed') {
+        setIsPollingResult(true);
+        fetchFinalResult();
+      }
+    }
+    
+    // Handle KPI updates from investor metrics
+    if (message.type === 'investor_kpis' && message.data) {
+      console.log('📊 KPI Update received:', message.data);
+      updateRealTimeData({
+        kpi_update: {
+          privacy_score: message.data.privacy_score,
+          cost_savings: message.data.cost_savings,
+          system_efficiency: message.data.system_efficiency,
+          processing_speed: message.data.processing_speed,
+          throughput_rate: message.data.throughput_rate,
+          roi_potential: message.data.roi_potential,
+          timestamp: message.data.timestamp
+        }
+      });
+    }
+    
+    // Also handle the complete event
+    if (message.type === 'complete') {
+      // Final response is ready, fetch the result
+      setIsPollingResult(true);
+      fetchFinalResult();
+    }
+  }, [updateProcessingStep, updateRealTimeData, fetchFinalResult]);
 
   const handleSubmit = async () => {
     if (!query.trim()) {
@@ -237,22 +248,21 @@ export function QueryInterface() {
       
       // Now that we have confirmation the query was accepted, reset state
       resetInvestorData();
-      setShouldConnectSSE(false); // Reset SSE connection
-      setRequestId(null); // Clear old request ID
       setQueryResult(null); // Clear only after we know new processing is starting
       
-      // Store the request ID for SSE connection
+      // Store the request ID for SSE connection (don't clear and reset - just update)
       console.log('🚀 Got request ID:', initialResponse.request_id);
       setRequestId(initialResponse.request_id);
       
-      // Delay SSE connection to ensure backend processing has started
-      setTimeout(() => {
-        console.log('🔄 Enabling SSE connection for:', initialResponse.request_id);
-        setShouldConnectSSE(true);
-      }, 1000); // 1 second delay
+      // Set active request ID for global SSE connection
+      setActiveRequestId(initialResponse.request_id);
     } catch (error) {
       console.error('Query submission failed:', error);
       setIsProcessing(false);
+      
+      // Clear active request ID on submission error
+      setActiveRequestId(null);
+      
       toast.error('Query processing failed');
     }
   };

@@ -11,11 +11,13 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // Disable Fast Refresh during development to prevent SSE connection interruptions
+  fastRefresh: false,
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:8000/api/:path*", // Proxy to FastAPI backend
+        destination: "http://localhost:8003/api/:path*", // Proxy to FastAPI backend
       },
     ];
   },

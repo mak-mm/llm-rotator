@@ -39,14 +39,18 @@ export function InvestorDashboard({ realTimeData = {}, investorMetrics, isProces
 
   // Animate values when data updates
   useEffect(() => {
+    console.log('📊 Dashboard received data:', { realTimeData, investorMetrics });
+    
     const newValues = {
-      privacyScore: investorMetrics?.privacy_score || realTimeData.privacy_update?.privacy_score || 0,
-      costSavings: investorMetrics?.savings_percentage || realTimeData.cost_calculation?.savings_percentage || 0,
-      systemEfficiency: investorMetrics?.system_efficiency || realTimeData.performance_metric?.system_efficiency || 0,
-      roiCalculation: realTimeData.cost_calculation?.roi_calculation || 0,
-      processingTime: investorMetrics?.processing_time || realTimeData.performance_metric?.total_processing_time || 0,
-      throughputRate: investorMetrics?.throughput_rate || realTimeData.performance_metric?.throughput_rate || 0
+      privacyScore: realTimeData.kpi_update?.privacy_score || investorMetrics?.privacy_score || realTimeData.privacy_update?.privacy_score || 0,
+      costSavings: realTimeData.kpi_update?.cost_savings || investorMetrics?.savings_percentage || realTimeData.cost_calculation?.savings_percentage || 0,
+      systemEfficiency: realTimeData.kpi_update?.system_efficiency || investorMetrics?.system_efficiency || realTimeData.performance_metric?.system_efficiency || 0,
+      roiCalculation: realTimeData.kpi_update?.roi_potential || realTimeData.cost_calculation?.roi_calculation || 0,
+      processingTime: realTimeData.kpi_update?.processing_speed || investorMetrics?.processing_time || realTimeData.performance_metric?.total_processing_time || 0,
+      throughputRate: realTimeData.kpi_update?.throughput_rate || investorMetrics?.throughput_rate || realTimeData.performance_metric?.throughput_rate || 0
     };
+    
+    console.log('📊 Dashboard calculated values:', newValues);
 
     // Animate to new values
     Object.entries(newValues).forEach(([key, targetValue]) => {

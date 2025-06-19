@@ -30,7 +30,7 @@ cleanup() {
     
     # Kill processes on specific ports
     echo -e "${YELLOW}Cleaning up ports...${NC}"
-    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+    lsof -ti:8003 | xargs kill -9 2>/dev/null || true
     lsof -ti:3000 | xargs kill -9 2>/dev/null || true
     
     # Kill any uvicorn processes
@@ -55,17 +55,17 @@ trap cleanup SIGINT SIGTERM
 echo -e "${BLUE}Checking for existing processes...${NC}"
 
 # Aggressively kill processes on our ports
-echo -e "${YELLOW}Forcefully clearing ports 8000 and 3000...${NC}"
+echo -e "${YELLOW}Forcefully clearing ports 8003 and 3000...${NC}"
 
-# Kill port 8000 (backend) - try normal kill first, then force kill
-if lsof -ti:8000 >/dev/null 2>&1; then
-    echo -e "${YELLOW}  Stopping backend process on port 8000...${NC}"
-    lsof -ti:8000 | xargs kill 2>/dev/null || true
+# Kill port 8003 (backend) - try normal kill first, then force kill
+if lsof -ti:8003 >/dev/null 2>&1; then
+    echo -e "${YELLOW}  Stopping backend process on port 8003...${NC}"
+    lsof -ti:8003 | xargs kill 2>/dev/null || true
     sleep 1
     # If still running, force kill
-    if lsof -ti:8000 >/dev/null 2>&1; then
-        echo -e "${RED}  Force killing backend process on port 8000...${NC}"
-        lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+    if lsof -ti:8003 >/dev/null 2>&1; then
+        echo -e "${RED}  Force killing backend process on port 8003...${NC}"
+        lsof -ti:8003 | xargs kill -9 2>/dev/null || true
     fi
 fi
 
@@ -118,8 +118,8 @@ echo -e "${GREEN}✅ Environment ready!${NC}"
 echo
 echo -e "${CYAN}Services:${NC}"
 echo -e "  🌐 Frontend: ${YELLOW}http://localhost:3000${NC}"
-echo -e "  🔧 Backend:  ${YELLOW}http://localhost:8000${NC}"
-echo -e "  📚 API Docs: ${YELLOW}http://localhost:8000/docs${NC}"
+echo -e "  🔧 Backend:  ${YELLOW}http://localhost:8003${NC}"
+echo -e "  📚 API Docs: ${YELLOW}http://localhost:8003/docs${NC}"
 echo
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
 echo
@@ -129,7 +129,7 @@ echo -e "${BLUE}[BACKEND] Starting...${NC}"
 (
     # Activate virtual environment and start backend
     source venv/bin/activate 2>/dev/null || echo -e "${YELLOW}Warning: No virtual environment found${NC}"
-    uvicorn src.api.main:app --reload --port 8000 --host 0.0.0.0 2>&1 | \
+    uvicorn src.api.main:app --reload --port 8003 --host 0.0.0.0 2>&1 | \
     while IFS= read -r line; do
         # Skip only the most repetitive lines, but show errors/warnings
         if [[ "$line" == *"presidio-analyzer"* ]] && [[ "$line" == *"Loaded recognizer"* ]]; then

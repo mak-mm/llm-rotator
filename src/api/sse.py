@@ -16,7 +16,8 @@ class SSEManager:
     """Manages Server-Sent Events connections and broadcasts"""
     
     def __init__(self):
-        self.active_connections: Dict[str, asyncio.Queue] = {}
+        # Support multiple connections per request_id
+        self.active_connections: Dict[str, list[asyncio.Queue]] = {}
         # Store events for requests even when no SSE connection exists yet
         self.event_history: Dict[str, list] = {}
     
@@ -24,18 +25,16 @@ class SSEManager:
         """Create a new SSE connection for a request"""
         logger.info(f"[SSE] Creating connection for {request_id}")
         
-        # Check if connection already exists to prevent duplicates
-        if request_id in self.active_connections:
-            logger.warning(f"[SSE] Connection already exists for {request_id}, closing existing one")
-            # Close existing connection by clearing its queue
-            existing_queue = self.active_connections[request_id]
-            try:
-                existing_queue.put_nowait(None)  # Signal termination
-            except asyncio.QueueFull:
-                pass
-        
+        # Create a new queue for this connection
         queue = asyncio.Queue()
-        self.active_connections[request_id] = queue
+        
+        # Initialize connections list if needed
+        if request_id not in self.active_connections:
+            self.active_connections[request_id] = []
+        
+        # Add this queue to the list of connections for this request
+        self.active_connections[request_id].append(queue)
+        logger.info(f"[SSE] Added connection for {request_id}, total connections: {len(self.active_connections[request_id])}")
         
         try:
             # Send initial connection event
@@ -76,9 +75,14 @@ class SSEManager:
         except asyncio.CancelledError:
             pass
         finally:
-            # Clean up connection
-            if request_id in self.active_connections:
-                del self.active_connections[request_id]
+            # Clean up this specific connection
+            if request_id in self.active_connections and queue in self.active_connections[request_id]:
+                self.active_connections[request_id].remove(queue)
+                logger.info(f"[SSE] Removed connection for {request_id}, remaining connections: {len(self.active_connections[request_id])}")
+                
+                # If no more connections for this request, clean up the entry
+                if not self.active_connections[request_id]:
+                    del self.active_connections[request_id]
                 
             # Clean up event history after some time
             # Keep events for 1 hour in case of reconnection
@@ -99,12 +103,16 @@ class SSEManager:
         self.event_history[request_id].append(event)
         logger.info(f"[SSE] Stored event {event_type} for {request_id} (history: {len(self.event_history[request_id])} events)")
         
-        # Send to active connection if exists
+        # Send to all active connections for this request
         if request_id in self.active_connections:
-            await self.active_connections[request_id].put(event)
-            logger.info(f"[SSE] Sent live event {event_type} to {request_id}")
+            for queue in self.active_connections[request_id]:
+                try:
+                    await queue.put(event)
+                except asyncio.QueueFull:
+                    logger.warning(f"[SSE] Queue full for {request_id}, skipping event")
+            logger.info(f"[SSE] Sent live event {event_type} to {len(self.active_connections[request_id])} connections for {request_id}")
         else:
-            logger.info(f"[SSE] No active connection for {request_id}, stored for later")
+            logger.info(f"[SSE] No active connections for {request_id}, stored for later")
     
     async def send_update(self, request_id: str, event_data: Dict[str, Any]):
         """Send a generic update event"""
@@ -113,9 +121,13 @@ class SSEManager:
             self.event_history[request_id] = []
         self.event_history[request_id].append(event_data)
         
-        # Send to active connection if exists
+        # Send to all active connections for this request
         if request_id in self.active_connections:
-            await self.active_connections[request_id].put(event_data)
+            for queue in self.active_connections[request_id]:
+                try:
+                    await queue.put(event_data)
+                except asyncio.QueueFull:
+                    logger.warning(f"[SSE] Queue full for {request_id}, skipping update")
     
     async def send_step_update(self, request_id: str, step: str, status: str, 
                               progress: float = 0, message: str = "", 
@@ -169,8 +181,14 @@ class SSEManager:
         return json.dumps(data)
     
     def disconnect(self, request_id: str):
-        """Remove a connection"""
+        """Remove all connections for a request"""
         if request_id in self.active_connections:
+            # Signal all connections to close
+            for queue in self.active_connections[request_id]:
+                try:
+                    queue.put_nowait(None)
+                except asyncio.QueueFull:
+                    pass
             del self.active_connections[request_id]
     
     def is_connected(self, request_id: str) -> bool:

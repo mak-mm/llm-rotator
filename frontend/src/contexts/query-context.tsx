@@ -104,7 +104,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
 
   // Update processing step status
   const updateProcessingStep = (step: string, status: string, progress: number, message?: string) => {
-    console.log('📊 Context - Updating processing step:', { step, status, progress, message });
+    console.log(`📊 Context - Updating processing step: ${step} -> ${status} (${progress}%) - ${message || 'no message'}`);
     setProcessingSteps(prev => ({
       ...prev,
       [step]: { status, progress, message }

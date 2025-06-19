@@ -61,6 +61,9 @@ class Fragment(BaseModel):
     provider: ProviderType = Field(..., description="Assigned provider")
     anonymized: bool = Field(False, description="Whether fragment was anonymized")
     context_percentage: float = Field(..., ge=0.0, le=1.0, description="Percentage of original context")
+    # Enhancement fields
+    original_content: Optional[str] = Field(None, description="Original content before enhancement")
+    enhancement_metadata: Optional[Dict[str, Any]] = Field(None, description="Enhancement metadata")
 
 
 class FragmentResponse(BaseModel):
