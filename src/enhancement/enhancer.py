@@ -1,7 +1,7 @@
 """
 Fragment Enhancement Module
 
-This module uses Claude to intelligently enhance fragments with proper context
+This module uses GPT-4o-mini to intelligently enhance fragments with proper context
 and instructions before sending them to downstream LLM providers.
 """
 
@@ -9,7 +9,7 @@ import asyncio
 import logging
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
-from anthropic import Anthropic
+from openai import AsyncOpenAI
 
 from src.api.models import Fragment, ProviderType
 
@@ -29,12 +29,12 @@ class EnhancementResult:
 
 class FragmentEnhancer:
     """
-    Enhances query fragments using Claude to add context and instructions
+    Enhances query fragments using GPT-4o-mini to add context and instructions
     """
     
-    def __init__(self, anthropic_api_key: str):
-        self.client = Anthropic(api_key=anthropic_api_key)
-        self.enhancement_model = "claude-sonnet-4-20250514"  # Latest Claude 4 Sonnet (May 2025)
+    def __init__(self, openai_api_key: str):
+        self.client = AsyncOpenAI(api_key=openai_api_key)
+        self.enhancement_model = "gpt-4o-mini"  # Fast and cost-effective orchestrator model
         
     async def enhance_fragments(
         self, 
@@ -230,7 +230,7 @@ Respond only with valid JSON."""
                     "instructions_added": enhancement_data["instructions_added"],
                     "enhancement_rationale": enhancement_data["enhancement_rationale"],
                     "quality_score": enhancement_data["quality_score"],
-                    "enhanced_by": "claude-4-sonnet",
+                    "enhanced_by": "gpt-4o-mini",
                     "enhanced_at": asyncio.get_event_loop().time()
                 }
             )
@@ -259,10 +259,10 @@ Respond only with valid JSON."""
     
     async def _call_claude(self, prompt: str, max_tokens: int = 1500) -> str:
         """
-        Make an API call to Claude for enhancement
+        Make an API call to GPT-4o-mini for enhancement
         """
         try:
-            response = self.client.messages.create(
+            response = await self.client.chat.completions.create(
                 model=self.enhancement_model,
                 max_tokens=max_tokens,
                 temperature=0.3,  # Lower temperature for more consistent enhancements
@@ -273,9 +273,9 @@ Respond only with valid JSON."""
                     }
                 ]
             )
-            return response.content[0].text
+            return response.choices[0].message.content
         except Exception as e:
-            logger.error(f"Claude API call failed: {e}")
+            logger.error(f"OpenAI API call failed: {e}")
             raise
     
     def get_enhancement_stats(self, enhanced_fragments: List[Fragment]) -> Dict[str, Any]:

@@ -58,59 +58,7 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
       const mappedStep = stepMapping[step] || step;
       console.log(`🔄 Flow Step Update: ${step} (mapped to ${mappedStep}) -> ${status}`);
       
-      // Handle PII detection start to trigger visual progression
-      if (mappedStep === 'pii_detection' && status === 'processing') {
-        console.log('🎯 PII Detection started - beginning visual progression sequence');
-        
-        // Update PII detection to processing immediately
-        setStepStates(prev => ({ ...prev, pii_detection: 'processing' }));
-        
-        // PII Detection: blue for 1-3s, then green
-        setTimeout(() => {
-          console.log('📊 Visual: PII Detection completed');
-          setStepStates(prev => ({ ...prev, pii_detection: 'completed' }));
-          
-          // Fragmentation: blue for 1-3s, then green
-          setTimeout(() => {
-            console.log('📊 Visual: Starting fragmentation...');
-            setStepStates(prev => ({ ...prev, fragmentation: 'processing' }));
-            
-            setTimeout(() => {
-              console.log('📊 Visual: Fragmentation completed, starting enhancement...');
-              setStepStates(prev => ({ ...prev, fragmentation: 'completed', enhancement: 'processing' }));
-              
-              // Enhancement: blue for 1-3s, then green
-              setTimeout(() => {
-                console.log('📊 Visual: Enhancement completed, starting distribution...');
-                setStepStates(prev => ({ ...prev, enhancement: 'completed', distribution: 'processing' }));
-                
-                // Distribution: blue for 1-3s, then green
-                setTimeout(() => {
-                  console.log('📊 Visual: Distribution completed, starting aggregation...');
-                  setStepStates(prev => ({ ...prev, distribution: 'completed', aggregation: 'processing' }));
-                }, 1000 + Math.random() * 2000); // 1-3s delay
-              }, 1000 + Math.random() * 2000); // 1-3s delay
-            }, 1000 + Math.random() * 2000); // 1-3s delay
-          }, 500 + Math.random() * 500); // Small delay before starting fragmentation
-        }, 1000 + Math.random() * 2000); // 1-3s delay for PII detection
-        
-        return; // Don't process this update normally
-      }
-      
-      // Handle aggregation and final_response updates normally (these come from real SSE)
-      if (mappedStep === 'aggregation' || mappedStep === 'final_response') {
-        setStepStates(prev => {
-          const newState = {
-            ...prev,
-            [mappedStep]: status
-          };
-          console.log(`📊 Updating stepStates from:`, prev, `to:`, newState);
-          return newState;
-        });
-        return;
-      }
-      
-      // For other steps, handle normally but skip if we're in visual progression mode
+      // Handle all SSE updates normally - no artificial delays needed
       setStepStates(prev => {
         // For processing status, only update if not already completed
         if (status === 'processing' && prev[mappedStep] === 'completed') {

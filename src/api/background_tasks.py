@@ -179,7 +179,7 @@ async def process_query_background(
                 f"Created {len(fragments)} privacy-preserving fragments"
             )
             
-            # STEP 3.5: Fragment Enhancement with Claude
+            # STEP 3.5: Fragment Enhancement with GPT-4o-mini
             logger.info(f"[{request_id}] STEP 3.5: Enhancing fragments with context and instructions...")
             await investor_metrics_collector.record_step_start(request_id, "enhancement", 3.5)
             
@@ -191,12 +191,12 @@ async def process_query_background(
             
             # Import and initialize fragment enhancer
             import os
-            anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
-            if anthropic_api_key and len(fragments) > 0:
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+            if openai_api_key and len(fragments) > 0:
                 try:
                     from src.enhancement.enhancer import FragmentEnhancer
                     
-                    enhancer = FragmentEnhancer(anthropic_api_key)
+                    enhancer = FragmentEnhancer(openai_api_key)
                     
                     # Prepare detection context for enhancement
                     detection_context = {
@@ -210,7 +210,7 @@ async def process_query_background(
                     # Send SSE enhancement progress  
                     await sse_manager.send_step_update(
                         request_id, "enhancement", "processing", 50,
-                        f"Enhancing {len(fragments)} fragments with Claude..."
+                        f"Enhancing {len(fragments)} fragments with GPT-4o-mini..."
                     )
                     
                     # Enhance fragments with context and instructions
