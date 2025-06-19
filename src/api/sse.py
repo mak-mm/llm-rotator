@@ -23,6 +23,17 @@ class SSEManager:
     async def connect(self, request_id: str) -> AsyncGenerator[str, None]:
         """Create a new SSE connection for a request"""
         logger.info(f"[SSE] Creating connection for {request_id}")
+        
+        # Check if connection already exists to prevent duplicates
+        if request_id in self.active_connections:
+            logger.warning(f"[SSE] Connection already exists for {request_id}, closing existing one")
+            # Close existing connection by clearing its queue
+            existing_queue = self.active_connections[request_id]
+            try:
+                existing_queue.put_nowait(None)  # Signal termination
+            except asyncio.QueueFull:
+                pass
+        
         queue = asyncio.Queue()
         self.active_connections[request_id] = queue
         

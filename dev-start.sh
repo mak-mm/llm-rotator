@@ -124,17 +124,15 @@ echo
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
 echo
 
-# Start backend with filtered, clean output
+# Start backend with verbose output for debugging
 echo -e "${BLUE}[BACKEND] Starting...${NC}"
 (
     # Activate virtual environment and start backend
     source venv/bin/activate 2>/dev/null || echo -e "${YELLOW}Warning: No virtual environment found${NC}"
     uvicorn src.api.main:app --reload --port 8000 --host 0.0.0.0 2>&1 | \
     while IFS= read -r line; do
-        # Skip noisy lines
+        # Skip only the most repetitive lines, but show errors/warnings
         if [[ "$line" == *"presidio-analyzer"* ]] && [[ "$line" == *"Loaded recognizer"* ]]; then
-            continue
-        elif [[ "$line" == *"presidio-analyzer"* ]] && [[ "$line" == *"WARNING"* ]] && [[ "$line" == *"language is not supported"* ]]; then
             continue
         elif [[ "$line" == *"INFO:"* ]] && [[ "$line" == *"127.0.0.1"* ]] && [[ "$line" == *"200 OK"* ]]; then
             continue  # Skip routine 200 OK requests
@@ -142,11 +140,21 @@ echo -e "${BLUE}[BACKEND] Starting...${NC}"
             continue  # Skip favicon requests
         fi
         
-        # Show important lines with colors
-        if [[ "$line" == *"ERROR"* ]] || [[ "$line" == *"error"* ]]; then
+        # Show ALL important lines including errors, warnings, and stack traces
+        if [[ "$line" == *"ERROR"* ]] || [[ "$line" == *"error"* ]] || [[ "$line" == *"Error"* ]]; then
             echo -e "${RED}[BACKEND ERROR]${NC} $line"
+        elif [[ "$line" == *"WARNING"* ]] || [[ "$line" == *"warning"* ]] || [[ "$line" == *"Warning"* ]]; then
+            echo -e "${YELLOW}[BACKEND WARNING]${NC} $line"
+        elif [[ "$line" == *"Traceback"* ]] || [[ "$line" == *"File \""* ]] || [[ "$line" == *"line "*"in"* ]]; then
+            echo -e "${RED}[BACKEND TRACE]${NC} $line"
+        elif [[ "$line" == *"Exception"* ]] || [[ "$line" == *"exception"* ]]; then
+            echo -e "${RED}[BACKEND EXCEPTION]${NC} $line"
+        elif [[ "$line" == *"Failed"* ]] || [[ "$line" == *"failed"* ]]; then
+            echo -e "${RED}[BACKEND FAILED]${NC} $line"
         elif [[ "$line" == *"404 Not Found"* ]]; then
             echo -e "${YELLOW}[BACKEND 404]${NC} $line"
+        elif [[ "$line" == *"500 Internal Server Error"* ]]; then
+            echo -e "${RED}[BACKEND 500]${NC} $line"
         elif [[ "$line" == *"Application startup complete"* ]]; then
             echo -e "${GREEN}[BACKEND READY]${NC} ✅ API Server Ready!"
         elif [[ "$line" == *"Uvicorn running"* ]]; then
@@ -182,9 +190,14 @@ echo -e "${BLUE}[BACKEND] Starting...${NC}"
             echo -e "${GREEN}[QUERY DONE]${NC} 🎉 $req_id - Final response ready"
         elif [[ "$line" == *"Will watch for changes"* ]]; then
             echo -e "${BLUE}[BACKEND WATCH]${NC} 👀 Watching for file changes..."
+        elif [[ "$line" == *"INFO:"* ]]; then
+            # Show INFO lines that aren't routine HTTP requests
+            if [[ "$line" != *"200 OK"* ]]; then
+                echo -e "${BLUE}[BACKEND INFO]${NC} $line"
+            fi
         else
-            # Show other important lines without flooding
-            if [[ "$line" != *"keepalive"* ]] && [[ "$line" != *"DEBUG"* ]] && [[ "$line" != *"INFO"* ]]; then
+            # Show other lines more liberally for debugging
+            if [[ "$line" != *"keepalive"* ]]; then
                 echo -e "${CYAN}[BACKEND]${NC} $line"
             fi
         fi
@@ -194,30 +207,32 @@ echo -e "${BLUE}[BACKEND] Starting...${NC}"
 # Give backend time to start
 sleep 3
 
-# Start frontend with clean, filtered output
+# Start frontend with verbose output for debugging
 echo -e "${BLUE}[FRONTEND] Starting...${NC}"
 (
     cd frontend
     npm run dev 2>&1 | \
     while IFS= read -r line; do
-        # Skip verbose/noisy lines
-        if [[ "$line" == *"Webpack is configured while Turbopack"* ]]; then
-            continue
-        elif [[ "$line" == *"experimental.turbo is deprecated"* ]]; then
-            continue
-        elif [[ "$line" == *"See instructions if you need"* ]]; then
-            continue
-        elif [[ "$line" == *"https://nextjs.org/docs"* ]]; then
-            continue
-        elif [[ "$line" == *"GET /favicon.ico"* ]] || [[ "$line" == *"GET /icon-"* ]]; then
+        # Skip only the most verbose lines, but show warnings and errors
+        if [[ "$line" == *"GET /favicon.ico"* ]] || [[ "$line" == *"GET /icon-"* ]]; then
             continue
         elif [[ "$line" == *"🏠 Home - queryResult: null"* ]]; then
             continue  # Skip repetitive home page logs
         fi
         
-        # Show important lines with colors and emojis
+        # Show ALL important lines including errors, warnings, and stack traces
         if [[ "$line" == *"error"* ]] || [[ "$line" == *"Error"* ]] || [[ "$line" == *"ERROR"* ]]; then
             echo -e "${RED}[FRONTEND ERROR]${NC} $line"
+        elif [[ "$line" == *"warning"* ]] || [[ "$line" == *"Warning"* ]] || [[ "$line" == *"WARNING"* ]]; then
+            echo -e "${YELLOW}[FRONTEND WARNING]${NC} $line"
+        elif [[ "$line" == *"Failed"* ]] || [[ "$line" == *"failed"* ]]; then
+            echo -e "${RED}[FRONTEND FAILED]${NC} $line"
+        elif [[ "$line" == *"Exception"* ]] || [[ "$line" == *"exception"* ]]; then
+            echo -e "${RED}[FRONTEND EXCEPTION]${NC} $line"
+        elif [[ "$line" == *"Traceback"* ]] || [[ "$line" == *"File \""* ]]; then
+            echo -e "${RED}[FRONTEND TRACE]${NC} $line"
+        elif [[ "$line" == *"deprecated"* ]] || [[ "$line" == *"DEPRECATED"* ]]; then
+            echo -e "${YELLOW}[FRONTEND DEPRECATED]${NC} $line"
         elif [[ "$line" == *"Ready in"* ]]; then
             time=$(echo "$line" | grep -o "[0-9]*ms")
             echo -e "${GREEN}[FRONTEND READY]${NC} ⚡ Next.js ready in $time"
@@ -238,11 +253,13 @@ echo -e "${BLUE}[FRONTEND] Starting...${NC}"
             echo -e "${BLUE}[FRONTEND INIT]${NC} ⚡ $version with Turbopack"
         elif [[ "$line" == *"Shutting down"* ]]; then
             echo -e "${YELLOW}[FRONTEND STOP]${NC} 🛑 Development server shutting down"
+        elif [[ "$line" == *"Port"* ]] && [[ "$line" == *"availability"* ]]; then
+            echo -e "${BLUE}[FRONTEND]${NC} $line"
+        elif [[ "$line" == *"SUCCESS"* ]] || [[ "$line" == *"available"* ]]; then
+            echo -e "${GREEN}[FRONTEND SUCCESS]${NC} $line"
         else
-            # Only show non-routine lines
-            if [[ "$line" != *"Next.js"* ]] && [[ "$line" != *"Environments:"* ]] && [[ "$line" != *"Experiments"* ]]; then
-                echo -e "${CYAN}[FRONTEND]${NC} $line"
-            fi
+            # Show more lines for debugging
+            echo -e "${CYAN}[FRONTEND]${NC} $line"
         fi
     done
 ) &

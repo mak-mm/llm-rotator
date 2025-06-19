@@ -27,8 +27,14 @@ export function useSSE(url: string | null, options: SSEOptions = {}) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const connect = useCallback(() => {
-    if (!url || url.includes('null') || url.includes('undefined') || eventSourceRef.current) {
-      console.log('🚫 SSE connection skipped:', { url, hasExisting: !!eventSourceRef.current });
+    // Skip if already connected or URL is invalid
+    if (!url || url.includes('null') || url.includes('undefined')) {
+      console.log('🚫 SSE connection skipped: invalid URL', { url });
+      return;
+    }
+    
+    if (eventSourceRef.current) {
+      console.log('🚫 SSE connection skipped: already connected', { url });
       return;
     }
 
@@ -119,7 +125,7 @@ export function useSSE(url: string | null, options: SSEOptions = {}) {
     return () => {
       disconnect();
     };
-  }, [url, connect, disconnect]);
+  }, [url]); // Only depend on URL changes, not the callbacks
 
   return {
     isConnected,

@@ -1,5 +1,5 @@
 // Privacy-Preserving LLM Model Rotator - Service Worker
-const CACHE_NAME = 'llm-rotator-v1';
+const CACHE_NAME = 'llm-rotator-v2-no-websocket';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -8,7 +8,7 @@ const STATIC_ASSETS = [
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing...');
+  console.log('Service Worker installing v2 (WebSocket removed)...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {

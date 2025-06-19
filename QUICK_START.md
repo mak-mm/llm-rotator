@@ -47,7 +47,7 @@ Once running:
 - **🌐 Frontend**: http://localhost:3000 (or displayed port)
 - **🔧 Backend API**: http://localhost:8000
 - **📚 API Documentation**: http://localhost:8000/docs
-- **🔄 WebSocket**: ws://localhost:8000/ws/updates
+- **🔄 Real-time Updates**: Server-Sent Events (SSE) at http://localhost:8000/api/v1/stream/{request_id}
 
 > **Note**: The frontend will automatically use the next available port if 3000 is busy. The actual port will be displayed in the terminal output.
 

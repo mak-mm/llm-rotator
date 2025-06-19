@@ -67,10 +67,14 @@ async def analyze_query(
         logger.info(f"[{request_id}] Query received: {len(query_request.query)} characters")
         
         # Store initial request state in Redis immediately for SSE endpoint
+        current_time = time.time()
         initial_data = {
             "status": "starting",
             "original_query": query_request.query,
-            "started_at": time.time()
+            "started_at": current_time,
+            "created_at": current_time,
+            "updated_at": current_time,
+            "progress": 0.0
         }
         await fastapi_request.app.state.redis.set(f"query:{request_id}", initial_data)
         logger.info(f"[DEBUG] Stored request {request_id} in Redis: {initial_data}")
@@ -178,9 +182,10 @@ async def get_status(request_id: str, request: Request):
         redis_client = request.app.state.redis
         result = await redis_client.get(f"query:{request_id}")
         
+        from datetime import datetime
+        now = datetime.utcnow()
+        
         if not result:
-            from datetime import datetime
-            now = datetime.utcnow()
             return StatusResponse(
                 request_id=request_id,
                 status="not_found",
@@ -198,20 +203,30 @@ async def get_status(request_id: str, request: Request):
             progress = 1.0
         elif status == "processing":
             # Could calculate based on completed steps
-            progress = 0.5
+            progress = result.get("progress", 0.5)
         elif status == "failed":
             progress = 0.0
         
-        from datetime import datetime
-        now = datetime.utcnow()
+        # Use stored timestamps if available, otherwise use current time
+        created_at = result.get("created_at")
+        if created_at:
+            created_at = datetime.fromtimestamp(created_at)
+        else:
+            created_at = now
+            
+        updated_at = result.get("updated_at") 
+        if updated_at:
+            updated_at = datetime.fromtimestamp(updated_at)
+        else:
+            updated_at = now
         
         return StatusResponse(
             request_id=request_id,
             status=status,
             progress=progress,
             message=result.get("message", ""),
-            created_at=now,
-            updated_at=now
+            created_at=created_at,
+            updated_at=updated_at
         )
 
     except Exception as e:
@@ -233,9 +248,21 @@ async def stream_progress(request_id: str, request: Request):
     """
     logger.info(f"SSE connection requested for {request_id}")
     
-    # Check if request exists in Redis
+    # Check if request exists in Redis with retry logic for race conditions
     redis_client = request.app.state.redis
-    result = await redis_client.get(f"query:{request_id}")
+    result = None
+    max_retries = 3
+    retry_delay = 0.5  # 500ms between retries
+    
+    for attempt in range(max_retries):
+        result = await redis_client.get(f"query:{request_id}")
+        if result:
+            break
+        if attempt < max_retries - 1:
+            logger.info(f"[DEBUG] SSE lookup attempt {attempt + 1} for {request_id}: NOT FOUND, retrying in {retry_delay}s")
+            await asyncio.sleep(retry_delay)
+        else:
+            logger.warning(f"SSE request for non-existent request_id after {max_retries} attempts: {request_id}")
     
     # Debug logging to see what's in Redis
     logger.info(f"[DEBUG] SSE lookup for {request_id}: {'FOUND' if result else 'NOT FOUND'}")

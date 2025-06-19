@@ -32,12 +32,16 @@ async def process_query_background(
         metrics_session = investor_metrics_collector.start_collection(request_id)
         
         # Store initial state in Redis
+        current_time = time.time()
         await redis_client.set(
             f"query:{request_id}",
             {
                 "status": "processing",
                 "original_query": query_request.query,
-                "started_at": time.time()
+                "started_at": current_time,
+                "created_at": current_time,
+                "updated_at": current_time,
+                "progress": 0.0
             }
         )
         
@@ -412,7 +416,10 @@ async def process_query_background(
                 "single_provider_cost": 0.008,
                 "savings_percentage": max(0, (1 - (len(fragments) * 0.002 / 0.008)) * 100) if fragments else 87.5
             },
-            "status": "completed"
+            "status": "completed",
+            "created_at": start_time,  # Use the original start time
+            "updated_at": time.time(),
+            "progress": 1.0
         }
         
         await redis_client.set(f"query:{request_id}", final_result, expire=3600)  # 1 hour expiry
@@ -429,6 +436,9 @@ async def process_query_background(
             {
                 "status": "failed",
                 "error": str(e),
-                "request_id": request_id
+                "request_id": request_id,
+                "created_at": start_time if 'start_time' in locals() else time.time(),
+                "updated_at": time.time(),
+                "progress": 0.0
             }
         )
