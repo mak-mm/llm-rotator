@@ -11,7 +11,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Card } from '@/components/ui/card';
-import { useSSE } from '@/hooks/useSSE';
+import { useQuery } from '@/contexts/query-context';
 
 interface ProcessingFlowProps {
   requestId: string | null;
@@ -23,6 +23,8 @@ interface StepState {
 }
 
 export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps) {
+  const { processingSteps } = useQuery();
+  
   const [stepStates, setStepStates] = useState<StepState>({
     planning: 'pending',
     pii_detection: 'pending',
@@ -32,35 +34,25 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
     final_response: 'pending',
   });
 
-  // SSE connection
-  const sseUrl = requestId && isProcessing ? `/api/v1/stream/${requestId}` : null;
+  // SSE connection disabled to prevent conflicts with main query interface
+  // const sseUrl = requestId && isProcessing ? `/api/v1/stream/${requestId}` : null;
   
-  useSSE(sseUrl, {
-    onMessage: (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('🎯 Flow SSE Event:', JSON.stringify(data, null, 2));
-        
-        if (data.type === 'step_progress' && data.data) {
-          const { step, status } = data.data;
-          console.log(`🔄 Step Update: ${step} -> ${status}`);
-          
-          setStepStates(prev => ({
-            ...prev,
-            [step]: status
-          }));
-        }
-      } catch (error) {
-        console.error('Flow SSE parse error:', error);
+  // Get step states from the shared context instead of SSE
+  useEffect(() => {
+    console.log('🎯 Processing steps from context:', processingSteps);
+    
+    // Convert context processing steps to local step states
+    const newStepStates = { ...stepStates };
+    Object.entries(processingSteps).forEach(([step, data]) => {
+      if (data.status === 'completed') {
+        newStepStates[step] = 'completed';
+      } else if (data.status === 'processing') {
+        newStepStates[step] = 'processing';
       }
-    },
-    onOpen: () => {
-      console.log('🔗 Flow SSE Connected');
-    },
-    onError: (error) => {
-      console.error('🚨 Flow SSE Error:', error);
-    }
-  });
+    });
+    
+    setStepStates(newStepStates);
+  }, [processingSteps]);
 
   // Reset when processing starts
   useEffect(() => {

@@ -226,20 +226,20 @@ export function QueryInterface() {
     };
 
     try {
-      // Reset state for new query
+      // Start processing without clearing results yet
+      setCurrentQuery(query.trim());
+      setIsProcessing(true);
+      
+      // Log for debugging
+      console.log('🚀 Query submitted, keeping previous visualization until new one starts');
+
+      const initialResponse = await analyzeMutation.mutateAsync(request);
+      
+      // Now that we have confirmation the query was accepted, reset state
       resetInvestorData();
       setShouldConnectSSE(false); // Reset SSE connection
       setRequestId(null); // Clear old request ID
-      
-      // Update context to show processing state - this updates the 3D visualization
-      setCurrentQuery(query.trim());
-      setIsProcessing(true);
-      setQueryResult(null);
-      
-      // Log for debugging
-      console.log('🚀 Query submitted, updating visualization with processing state');
-
-      const initialResponse = await analyzeMutation.mutateAsync(request);
+      setQueryResult(null); // Clear only after we know new processing is starting
       
       // Store the request ID for SSE connection
       console.log('🚀 Got request ID:', initialResponse.request_id);

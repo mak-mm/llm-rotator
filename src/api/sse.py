@@ -59,6 +59,12 @@ class SSEManager:
                 try:
                     # Wait for events with timeout for keepalive
                     event = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    
+                    # Check for termination signal
+                    if event is None:
+                        logger.info(f"[SSE] Received termination signal for {request_id}")
+                        break
+                        
                     yield self._format_event(event)
                 except asyncio.TimeoutError:
                     # Send keepalive ping

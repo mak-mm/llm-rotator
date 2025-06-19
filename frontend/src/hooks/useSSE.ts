@@ -58,11 +58,21 @@ export function useSSE(url: string | null, options: SSEOptions = {}) {
 
       eventSource.onmessage = (event) => {
         try {
+          // Check for null or empty data
+          if (!event.data || event.data === 'null' || event.data.trim() === '') {
+            console.warn('⚠️ SSE: Received empty or null data, skipping');
+            return;
+          }
+          
           const data = JSON.parse(event.data);
-          console.log('📨 SSE:', data.type);
+          console.log('📨 SSE:', data?.type || 'no-type');
           onMessage?.(event);
         } catch (error) {
-          console.error('❌ SSE Parse Error:', error.message);
+          console.error('❌ SSE Parse Error:', {
+            message: error.message,
+            data: event.data,
+            type: typeof event.data
+          });
         }
       };
 

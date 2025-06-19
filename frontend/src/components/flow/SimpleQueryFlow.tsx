@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Circle, Loader2 } from 'lucide-react';
-import { useSSE } from '@/hooks/useSSE';
+import { useQuery } from '@/contexts/query-context';
 
 interface ProcessingStep {
   name: string;
@@ -18,6 +18,8 @@ interface SimpleQueryFlowProps {
 }
 
 export function SimpleQueryFlow({ requestId, isProcessing }: SimpleQueryFlowProps) {
+  const { processingSteps } = useQuery();
+  
   const [steps, setSteps] = useState<ProcessingStep[]>([
     { name: 'Planning', status: 'pending' },
     { name: 'PII Detection', status: 'pending' },
@@ -27,43 +29,43 @@ export function SimpleQueryFlow({ requestId, isProcessing }: SimpleQueryFlowProp
     { name: 'Final Response', status: 'pending' },
   ]);
 
-  // SSE connection
-  const sseUrl = requestId && isProcessing ? `/api/v1/stream/${requestId}` : null;
+  // SSE connection disabled to prevent conflicts with main query interface
+  // const sseUrl = requestId && isProcessing ? `/api/v1/stream/${requestId}` : null;
   
-  useSSE(sseUrl, {
-    onMessage: (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('📨 Flow SSE:', JSON.stringify(data, null, 2));
+  // Get step updates from shared context instead of SSE
+  useEffect(() => {
+    console.log('📨 Processing steps from context:', processingSteps);
+    
+    // Map backend step names to our display names
+    const stepMapping: Record<string, string> = {
+      'planning': 'Planning',
+      'pii_detection': 'PII Detection',
+      'fragmentation': 'Fragmentation',
+      'distribution': 'Distribution',
+      'aggregation': 'Aggregation',
+      'final_response': 'Final Response',
+    };
+    
+    // Update steps based on context processing steps
+    setSteps(prevSteps => 
+      prevSteps.map(step => {
+        // Find matching backend step
+        const backendStep = Object.keys(stepMapping).find(
+          key => stepMapping[key] === step.name
+        );
         
-        if (data.type === 'step_progress' && data.data) {
-          const { step, status } = data.data;
-          
-          // Map backend step names to our display names
-          const stepMapping: Record<string, string> = {
-            'planning': 'Planning',
-            'pii_detection': 'PII Detection',
-            'fragmentation': 'Fragmentation',
-            'distribution': 'Distribution',
-            'aggregation': 'Aggregation',
-            'final_response': 'Final Response',
+        if (backendStep && processingSteps[backendStep]) {
+          const { status } = processingSteps[backendStep];
+          return {
+            ...step,
+            status: status === 'completed' ? 'completed' : 'processing'
           };
-          
-          const displayName = stepMapping[step] || step;
-          
-          setSteps(prevSteps => 
-            prevSteps.map(s => 
-              s.name === displayName 
-                ? { ...s, status: status === 'completed' ? 'completed' : 'processing' }
-                : s
-            )
-          );
         }
-      } catch (error) {
-        console.error('SSE parse error:', error);
-      }
-    }
-  });
+        
+        return step;
+      })
+    );
+  }, [processingSteps]);
 
   // Reset steps when starting new processing
   useEffect(() => {
