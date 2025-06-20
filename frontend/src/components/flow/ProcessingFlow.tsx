@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import {
   ReactFlow,
   Background,
@@ -9,9 +9,16 @@ import {
   Edge,
   MarkerType,
   BackgroundVariant,
+  useNodesState,
+  useEdgesState,
+  NodeChange,
+  EdgeChange,
+  NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { RotateCcw } from 'lucide-react';
 import { useQuery } from '@/contexts/query-context';
 import { useSSESubscription, useSSEContext } from '@/contexts/sse-context';
 import { ProcessingFlowNode } from './ProcessingFlowNode';
@@ -46,10 +53,13 @@ const stepMapping: Record<string, string> = {
   'final_response': 'final_response'
 };
 
-// Node types for React Flow
-const nodeTypes = {
+// Node types for React Flow - defined outside component to prevent re-creation
+const nodeTypes: NodeTypes = {
   processingNode: ProcessingFlowNode,
-};
+} as const;
+
+console.log('🔧 NodeTypes registered:', nodeTypes);
+console.log('🔧 ProcessingFlowNode component:', ProcessingFlowNode);
 
 interface StepDetails {
   [key: string]: any;
@@ -58,6 +68,10 @@ interface StepDetails {
 export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps) {
   const { processingSteps } = useQuery();
   const { isConnected } = useSSEContext();
+  
+  // Debug nodeTypes
+  console.log('🔍 NodeTypes defined:', nodeTypes);
+  console.log('🔍 ProcessingFlowNode:', ProcessingFlowNode);
   
   const [stepStates, setStepStates] = useState<StepState>({
     planning: 'pending',
@@ -421,168 +435,268 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
     }
   };
 
-  // Generate nodes based on current step states and fragments
-  const nodes: Node[] = useMemo(() => {
+  // Generate initial nodes based on current step states and fragments
+  const initialNodes: Node[] = useMemo(() => {
     console.log('📊 Generating nodes with stepStates:', stepStates, 'fragments:', fragments, 'selectedNode:', selectedNode);
+    console.log('🔧 Using custom node type: processingNode');
+    console.log('🔍 Creating nodes with type:', 'processingNode');
     
-    const baseNodes = [
+    // Calculate horizontal positions for left-to-right layout
+    const startX = 20;
+    const nodeSpacing = 320;
+    const centerY = 150;
+    
+    const baseNodes: Node[] = [
       {
         id: 'planning',
         type: 'processingNode',
-        position: { x: 150, y: 50 },
+        position: { x: startX, y: centerY },
         data: { 
           label: '🧠 Planning',
           status: stepStates.planning,
           details: getNodeDetails('planning')
         },
-        selected: selectedNode === 'planning'
+        draggable: true
       },
       {
         id: 'pii_detection',
         type: 'processingNode',
-        position: { x: 50, y: 200 },
+        position: { x: startX + nodeSpacing, y: centerY },
         data: { 
           label: '🔍 PII Detection',
           status: stepStates.pii_detection,
           details: getNodeDetails('pii_detection')
         },
-        selected: selectedNode === 'pii_detection'
+        draggable: true
       },
       {
         id: 'fragmentation',
         type: 'processingNode',
-        position: { x: 400, y: 200 },
+        position: { x: startX + (2 * nodeSpacing), y: centerY },
         data: { 
           label: '✂️ Fragmentation',
           status: stepStates.fragmentation,
           details: getNodeDetails('fragmentation')
         },
-        selected: selectedNode === 'fragmentation'
+        draggable: true
       },
       {
         id: 'enhancement',
         type: 'processingNode',
-        position: { x: 750, y: 200 },
+        position: { x: startX + (3 * nodeSpacing), y: centerY },
         data: { 
           label: '🎯 Enhancement',
           status: stepStates.enhancement,
           details: getNodeDetails('enhancement')
         },
-        selected: selectedNode === 'enhancement'
+        draggable: true
       },
       {
         id: 'distribution',
         type: 'processingNode',
-        position: { x: 400, y: 400 },
+        position: { x: startX + (4 * nodeSpacing), y: centerY },
         data: { 
           label: fragments.length > 0 ? `🚀 Distribution (${fragments.length})` : '🚀 Distribution',
           status: stepStates.distribution,
           details: getNodeDetails('distribution')
         },
-        selected: selectedNode === 'distribution'
+        draggable: true
       },
       {
         id: 'aggregation',
         type: 'processingNode',
-        position: { x: 150, y: 600 },
+        position: { x: startX + (5 * nodeSpacing), y: centerY },
         data: { 
           label: '🔗 Aggregation',
           status: stepStates.aggregation,
           details: getNodeDetails('aggregation')
         },
-        selected: selectedNode === 'aggregation'
+        draggable: true
       },
       {
         id: 'final_response',
         type: 'processingNode',
-        position: { x: 650, y: 600 },
+        position: { x: startX + (6 * nodeSpacing), y: centerY },
         data: { 
           label: '✅ Final Response',
           status: stepStates.final_response,
           details: getNodeDetails('final_response')
         },
-        selected: selectedNode === 'final_response'
+        draggable: true
       }
     ];
     
     return baseNodes;
   }, [stepStates, fragments, selectedNode, stepDetails]);
 
-  const edges: Edge[] = useMemo(() => [
+  const initialEdges: Edge[] = useMemo(() => [
     {
       id: 'planning-pii',
       source: 'planning',
       target: 'pii_detection',
+      type: 'straight',
       markerEnd: { type: MarkerType.ArrowClosed },
       animated: stepStates.pii_detection === 'processing',
-      style: { strokeWidth: 2 }
+      style: { strokeWidth: 2, stroke: '#64748b' }
     },
     {
       id: 'pii-fragmentation',
       source: 'pii_detection',
       target: 'fragmentation',
+      type: 'straight',
       markerEnd: { type: MarkerType.ArrowClosed },
       animated: stepStates.fragmentation === 'processing',
-      style: { strokeWidth: 2 }
+      style: { strokeWidth: 2, stroke: '#64748b' }
     },
     {
       id: 'fragmentation-enhancement',
       source: 'fragmentation',
       target: 'enhancement',
+      type: 'straight',
       markerEnd: { type: MarkerType.ArrowClosed },
       animated: stepStates.enhancement === 'processing',
-      style: { strokeWidth: 2 }
+      style: { strokeWidth: 2, stroke: '#64748b' }
     },
     {
       id: 'enhancement-distribution',
       source: 'enhancement',
       target: 'distribution',
+      type: 'straight',
       markerEnd: { type: MarkerType.ArrowClosed },
       animated: stepStates.distribution === 'processing',
-      style: { strokeWidth: 2 }
+      style: { strokeWidth: 2, stroke: '#64748b' }
     },
     {
       id: 'distribution-aggregation',
       source: 'distribution',
       target: 'aggregation',
+      type: 'straight',
       markerEnd: { type: MarkerType.ArrowClosed },
       animated: stepStates.aggregation === 'processing',
-      style: { strokeWidth: 2 }
+      style: { strokeWidth: 2, stroke: '#64748b' }
     },
     {
       id: 'aggregation-final',
       source: 'aggregation',
       target: 'final_response',
+      type: 'straight',
       markerEnd: { type: MarkerType.ArrowClosed },
       animated: stepStates.final_response === 'processing',
-      style: { strokeWidth: 2 }
+      style: { strokeWidth: 2, stroke: '#64748b' }
     }
   ], [stepStates]);
 
-  // Force re-render when stepStates change
-  const [flowKey, setFlowKey] = useState(0);
+  // Use React Flow state hooks for draggable nodes
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Update nodes when step states or details change
   useEffect(() => {
-    setFlowKey(prev => prev + 1);
-  }, [stepStates]);
+    console.log('📝 Updating nodes with initialNodes:', initialNodes);
+    setNodes(initialNodes);
+  }, [initialNodes]);
+
+  // Update edges when step states change
+  useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges]);
+  
+  // Debug current nodes
+  console.log('🎯 Current nodes in state:', nodes);
+
+  // Reset nodes to default positions
+  const resetLayout = useCallback(() => {
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
+
+  // Resizable container state
+  const [containerHeight, setContainerHeight] = useState(400);
+  const [isResizing, setIsResizing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Handle resize
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !containerRef.current) return;
+      
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newHeight = e.clientY - containerRect.top;
+      
+      // Set min and max heights
+      if (newHeight >= 400 && newHeight <= 1200) {
+        setContainerHeight(newHeight);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      // Change cursor while resizing
+      document.body.style.cursor = 'ns-resize';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'default';
+    };
+  }, [isResizing]);
 
   return (
     <Card className="p-6">
-      <h3 className="text-lg font-semibold mb-4">Privacy-Preserving Processing Pipeline</h3>
-      <div className="w-full h-[800px] border rounded-lg bg-gray-50">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">Privacy-Preserving Processing Pipeline</h3>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetLayout}
+            className="flex items-center gap-2"
+            title="Reset layout to default positions"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Reset Layout
+          </Button>
+          <span className="text-sm text-gray-500">
+            Height: {containerHeight}px
+          </span>
+        </div>
+      </div>
+      <div 
+        ref={containerRef}
+        className="relative w-full border rounded-lg bg-gray-50"
+        style={{ height: `${containerHeight}px` }}
+      >
         <ReactFlow
-          key={flowKey}
           nodes={nodes}
           edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           attributionPosition="bottom-left"
-          nodesDraggable={false}
+          nodesDraggable={true}
           nodesConnectable={false}
           elementsSelectable={true}
           fitView
-          fitViewOptions={{ padding: 0.2 }}
-          minZoom={0.5}
+          fitViewOptions={{ padding: 0.05, maxZoom: 1, minZoom: 0.3 }}
+          minZoom={0.3}
           maxZoom={1.5}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
+          panOnScroll={true}
+          panOnDrag={true}
+          zoomOnScroll={true}
+          zoomOnPinch={true}
+          preventScrolling={false}
+          proOptions={{ hideAttribution: true }}
           onNodeClick={(event, node) => {
             console.log('🎯 Node clicked:', node.id, 'Current selectedNode:', selectedNode, 'Fragments:', fragments.length);
             
@@ -604,6 +718,21 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
           <Background color="#f0f0f0" gap={16} />
           <Controls />
         </ReactFlow>
+        
+        {/* Resize handle */}
+        <div
+          className={`absolute bottom-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center transition-all group ${
+            isResizing ? 'bg-blue-500/20' : 'hover:bg-gray-200'
+          }`}
+          onMouseDown={handleMouseDown}
+          title="Drag to resize"
+        >
+          <div className={`flex gap-1 transition-opacity ${isResizing ? 'opacity-100' : 'opacity-50 group-hover:opacity-100'}`}>
+            <div className="w-8 h-0.5 bg-gray-400 rounded-full" />
+            <div className="w-8 h-0.5 bg-gray-400 rounded-full" />
+            <div className="w-8 h-0.5 bg-gray-400 rounded-full" />
+          </div>
+        </div>
       </div>
       <div className="flex gap-4 mt-4 text-sm">
         <div className="flex items-center gap-2">

@@ -1,30 +1,34 @@
 "use client";
 
-import { memo } from 'react';
+import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Card } from '@/components/ui/card';
 
-interface ProcessingFlowNodeProps {
-  data: {
-    label: string;
-    status: 'pending' | 'processing' | 'completed';
-    details?: {
-      title?: string;
-      items?: Array<{
-        label: string;
-        value: string | number;
-        highlight?: boolean;
-      }>;
-      subItems?: Array<{
-        text: string;
-        type?: 'success' | 'warning' | 'info';
-      }>;
-    };
+import type { NodeProps } from '@xyflow/react';
+
+interface NodeData {
+  label: string;
+  status: 'pending' | 'processing' | 'completed';
+  details?: {
+    title?: string;
+    items?: Array<{
+      label: string;
+      value: string | number;
+      highlight?: boolean;
+    }>;
+    subItems?: Array<{
+      text: string;
+      type?: 'success' | 'warning' | 'info';
+    }>;
   };
-  selected?: boolean;
 }
 
-export const ProcessingFlowNode = memo(({ data, selected }: ProcessingFlowNodeProps) => {
+type ProcessingFlowNodeProps = NodeProps<NodeData>;
+
+function ProcessingFlowNodeComponent(props: ProcessingFlowNodeProps) {
+  const { data, selected } = props;
+  console.log('🎨 ProcessingFlowNode rendering with data:', data);
+  
   const getStatusColor = () => {
     switch (data.status) {
       case 'completed':
@@ -48,11 +52,11 @@ export const ProcessingFlowNode = memo(({ data, selected }: ProcessingFlowNodePr
   };
 
   return (
-    <>
-      <Handle type="target" position={Position.Top} className="w-2 h-2" />
+    <div>
+      <Handle type="target" position={Position.Left} className="w-2 h-2" />
       <Card 
-        className={`p-4 min-w-[280px] max-w-[320px] transition-all duration-200 ${getNodeBackground()} ${
-          selected ? 'ring-2 ring-blue-400 shadow-lg' : 'shadow-sm'
+        className={`p-4 min-w-[280px] max-w-[320px] transition-all duration-200 cursor-move ${getNodeBackground()} ${
+          selected ? 'ring-2 ring-blue-400 shadow-lg' : 'shadow-sm hover:shadow-md'
         }`}
       >
         {/* Header */}
@@ -121,9 +125,10 @@ export const ProcessingFlowNode = memo(({ data, selected }: ProcessingFlowNodePr
           </div>
         )}
       </Card>
-      <Handle type="source" position={Position.Bottom} className="w-2 h-2" />
-    </>
+      <Handle type="source" position={Position.Right} className="w-2 h-2" />
+    </div>
   );
-});
+}
 
+export const ProcessingFlowNode = memo(ProcessingFlowNodeComponent);
 ProcessingFlowNode.displayName = 'ProcessingFlowNode';
