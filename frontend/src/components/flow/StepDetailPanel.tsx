@@ -356,6 +356,25 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
                 <div className="text-xs text-orange-500">Total expense</div>
               </div>
             </div>
+            
+            {/* Final LLM Response */}
+            {details.final_response && (
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200">
+                <div className="text-sm text-gray-600 font-medium mb-2">Final Aggregated Response:</div>
+                <div className="bg-white p-4 rounded-lg border">
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap block">
+                    {details.final_response}
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {!details.final_response && status === 'completed' && (
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <div className="text-sm text-red-600 font-medium mb-1">Final Response:</div>
+                <p className="text-xs text-red-500 block">ERROR: No final response available</p>
+              </div>
+            )}
           </div>
         );
 

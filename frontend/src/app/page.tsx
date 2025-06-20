@@ -1,10 +1,6 @@
 "use client";
 
-import { QueryInterface } from "@/components/query/query-interface";
-import { PrivacyDashboard } from "@/components/dashboard/privacy-dashboard";
-import { ProviderStatus } from "@/components/providers/provider-status";
 import { Header } from "@/components/layout/header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProcessingFlowWithDetails } from "@/components/flow/ProcessingFlowWithDetails";
 import { QueryProvider, useQuery } from "@/contexts/query-context";
 import { useEffect, useState } from "react";
@@ -53,26 +49,6 @@ function HomeContent() {
           />
         </div>
 
-        {/* Main Content */}
-        <Tabs defaultValue="query" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="query">Query Interface</TabsTrigger>
-            <TabsTrigger value="dashboard">Privacy Dashboard</TabsTrigger>
-            <TabsTrigger value="providers">Provider Status</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="query" className="space-y-6">
-            <QueryInterface />
-          </TabsContent>
-
-          <TabsContent value="dashboard" className="space-y-6">
-            <PrivacyDashboard />
-          </TabsContent>
-
-          <TabsContent value="providers" className="space-y-6">
-            <ProviderStatus />
-          </TabsContent>
-        </Tabs>
       </main>
     </div>
   );
