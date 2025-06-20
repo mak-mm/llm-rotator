@@ -403,7 +403,7 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
           title: 'Fragmentation Strategy',
           items: [
             { label: 'Strategy', value: details.strategy ?? 'NaN' },
-            { label: 'Fragments created', value: details.fragment_count ?? fragments.length || 'NaN', highlight: true },
+            { label: 'Fragments created', value: details.fragment_count ?? (fragments.length || 'NaN'), highlight: true },
             { label: 'Context isolation', value: details.isolation ?? 'NaN' }
           ],
           subItems: details.overlap_minimized ? [
