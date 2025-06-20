@@ -20,8 +20,8 @@ interface NewQueryModalProps {
 const EXAMPLE_QUERIES = [
   {
     category: "Healthcare",
-    query: "My patient John Smith (DOB: 1985-03-15, SSN: 123-45-6789) has been experiencing chest pain. What diagnostic tests should I consider?",
-    description: "Contains PII that will be anonymized"
+    query: "My patient Sarah Rodriguez (DOB: 03/15/1978, SSN: 987-65-4321, Phone: 555-123-4567, Email: sarah.rodriguez@email.com, Address: 123 Main St, Boston MA 02101) presented with severe chest pain and shortness of breath. Her medical record number is MRN-2024-7890. She has a history of Type 2 Diabetes (diagnosed 2018, HbA1c: 8.2%) and Hypertension (current BP: 165/95, on Lisinopril 20mg daily). Insurance: BlueCross BlueShield Policy #BC-789456123. Emergency contact: Maria Rodriguez (daughter) at 555-987-6543. Current medications include Metformin 1000mg BID, Atorvastatin 40mg daily. What diagnostic workup and treatment plan would you recommend for this acute presentation?",
+    description: "High-sensitivity query with extensive PII - will trigger fragmentation"
   },
   {
     category: "Financial",

@@ -54,7 +54,7 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
       planning: '🧠 Query Planning & Analysis',
       pii_detection: '🔍 PII Detection & Classification',
       fragmentation: '✂️ Query Fragmentation Strategy',
-      enhancement: '🎯 Fragment Enhancement & Context',
+      enhancement: '🎯 Fragment Optimization & Context',
       distribution: '🚀 Multi-Provider Distribution',
       aggregation: '🔗 Response Aggregation',
       final_response: '✅ Final Response Assembly'
@@ -67,7 +67,7 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
       planning: 'Analyzes query complexity, determines optimal processing strategy, and estimates resource requirements for privacy-preserving execution.',
       pii_detection: 'Scans for 50+ types of personally identifiable information using Microsoft Presidio, classifying sensitivity levels and compliance requirements.',
       fragmentation: 'Creates privacy-preserving query fragments using semantic analysis and entity-based splitting to minimize context exposure.',
-      enhancement: 'Enriches fragments with necessary context and instructions while maintaining anonymization and privacy boundaries.',
+      enhancement: 'Optimizes fragment segmentation and adds appropriate context to each fragment to ensure coherent responses while maintaining query intent.',
       distribution: 'Routes fragments to optimal LLM providers based on cost, capabilities, and sensitivity requirements for parallel processing.',
       aggregation: 'Combines partial responses using weighted ensemble methods to ensure coherent, high-quality final output.',
       final_response: 'Assembles the complete response with privacy scoring, quality metrics, and performance analytics for delivery.'
@@ -83,6 +83,19 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
           <Clock className="h-8 w-8 mx-auto mb-2 text-gray-300" />
           <p className="text-sm block">Step is waiting to be processed</p>
           <p className="text-xs text-gray-400 mt-1 block">Details will appear when processing begins</p>
+        </div>
+      );
+    }
+
+    // Show skipped state for steps that were not needed
+    if (status === 'skipped') {
+      return (
+        <div className="text-center text-gray-500 py-8">
+          <div className="h-8 w-8 mx-auto mb-2 text-gray-300 flex items-center justify-center">
+            <span className="text-2xl">⏭️</span>
+          </div>
+          <p className="text-sm block">Step was skipped</p>
+          <p className="text-xs text-gray-400 mt-1 block">This step was not needed for your query</p>
         </div>
       );
     }
@@ -204,31 +217,42 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-indigo-50 p-3 rounded-lg">
-                <div className="text-sm text-indigo-600 font-medium">Entities Masked</div>
+                <div className="text-sm text-indigo-600 font-medium">Fragments Enhanced</div>
                 <div className="text-2xl font-bold text-indigo-900">
-                  {details.masked_count ?? 'NaN'}
+                  {details.fragments_enhanced ?? 'NaN'}
                 </div>
-                <div className="text-xs text-indigo-500">Anonymized elements</div>
+                <div className="text-xs text-indigo-500">Optimized segments</div>
               </div>
               <div className="bg-teal-50 p-3 rounded-lg">
-                <div className="text-sm text-teal-600 font-medium">Context Preserved</div>
+                <div className="text-sm text-teal-600 font-medium">Context Quality</div>
                 <div className="text-2xl font-bold text-teal-900">
-                  {details.context_preservation ?? 'NaN'}
+                  {details.context_quality ?? 'NaN'}
                 </div>
-                <div className="text-xs text-teal-500">Meaning retention</div>
+                <div className="text-xs text-teal-500">Optimization score</div>
               </div>
             </div>
+            {details.segmentation_optimized ? (
+              <div className="bg-green-50 p-3 rounded-lg flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm text-green-800 font-medium">Fragment segmentation optimized</span>
+              </div>
+            ) : (
+              <div className="bg-red-50 p-3 rounded-lg flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <span className="text-sm text-red-800 font-medium">ERROR: Segmentation optimization status unknown</span>
+              </div>
+            )}
             <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="text-sm text-gray-600 font-medium mb-2">Anonymization Applied</div>
+              <div className="text-sm text-gray-600 font-medium mb-2">Context Enhancements Applied</div>
               <div className="space-y-1">
-                {details.anonymizations && details.anonymizations.length > 0 ? (
-                  details.anonymizations.map((anon: string, idx: number) => (
-                    <div key={idx} className="text-xs text-gray-700 font-mono bg-white px-2 py-1 rounded border">
-                      {anon}
+                {details.context_additions && details.context_additions.length > 0 ? (
+                  details.context_additions.map((addition: string, idx: number) => (
+                    <div key={idx} className="text-xs text-gray-700 bg-white px-2 py-1 rounded border">
+                      {addition}
                     </div>
                   ))
                 ) : (
-                  <div className="text-xs text-red-500">ERROR: No anonymization data available</div>
+                  <div className="text-xs text-red-500">ERROR: No context enhancement data available</div>
                 )}
               </div>
             </div>

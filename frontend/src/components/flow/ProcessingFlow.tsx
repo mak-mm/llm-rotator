@@ -413,12 +413,12 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         
       case 'enhancement':
         return {
-          title: 'Anonymization Applied',
+          title: 'Fragment Optimization',
           items: [
-            { label: 'Entities masked', value: details.masked_count ?? 'NaN' },
-            { label: 'Context preserved', value: details.context_preservation ?? 'NaN', highlight: true }
+            { label: 'Fragments enhanced', value: details.fragments_enhanced ?? 'NaN' },
+            { label: 'Context quality', value: details.context_quality ?? 'NaN', highlight: true }
           ],
-          subItems: details.anonymizations ? details.anonymizations.map((a: string) => ({
+          subItems: details.context_additions ? details.context_additions.slice(0, 2).map((a: string) => ({
             text: a,
             type: 'info' as const
           })) : []
