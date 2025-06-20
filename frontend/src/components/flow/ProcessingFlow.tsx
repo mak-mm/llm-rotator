@@ -5,12 +5,14 @@ import {
   ReactFlow,
   Background,
   Controls,
+  ControlButton,
   Node,
   Edge,
   MarkerType,
   BackgroundVariant,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   NodeChange,
   EdgeChange,
   NodeTypes,
@@ -18,7 +20,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Plus, Brain, Search, Scissors, Target, Zap, GitMerge, CheckCircle } from 'lucide-react';
+import { RotateCcw, Plus, Brain, Search, Scissors, Target, Zap, GitMerge, CheckCircle, Lock, Unlock, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { useQuery } from '@/contexts/query-context';
 import { useSSESubscription, useSSEContext } from '@/contexts/sse-context';
 import { ProcessingFlowNode } from './ProcessingFlowNode';
@@ -90,6 +92,7 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
   const [showFragments, setShowFragments] = useState(false);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedFragment, setSelectedFragment] = useState<string | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
   
   // Store detailed information for each step
   const [stepDetails, setStepDetails] = useState<StepDetails>({
@@ -728,11 +731,23 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
+          onNodesChange={(changes) => {
+            if (isLocked) {
+              // Only allow selection changes when locked, not position changes
+              const filteredChanges = changes.filter(change => 
+                change.type === 'select' || change.type === 'remove'
+              );
+              if (filteredChanges.length > 0) {
+                onNodesChange(filteredChanges);
+              }
+            } else {
+              onNodesChange(changes);
+            }
+          }}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           attributionPosition="bottom-left"
-          nodesDraggable={true}
+          nodesDraggable={!isLocked}
           nodesConnectable={false}
           elementsSelectable={true}
           fitView
@@ -769,7 +784,11 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
           }}
         >
           <Background color="#00000010" className="dark:[color:#ffffff10]" gap={16} />
-          <Controls />
+          <Controls showInteractive={false}>
+            <ControlButton onClick={() => setIsLocked(!isLocked)}>
+              {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+            </ControlButton>
+          </Controls>
         </ReactFlow>
         
         {/* Resize handle */}

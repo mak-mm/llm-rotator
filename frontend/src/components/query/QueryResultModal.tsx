@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, Shield, Zap, DollarSign, Copy, RefreshCw, X, Clock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -47,6 +47,7 @@ export function QueryResultModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-black/95 backdrop-blur-xl border-white/10">
+        <DialogTitle className="sr-only">Privacy-Protected Response</DialogTitle>
         <div className="relative">
           {/* Success Icon */}
           <motion.div

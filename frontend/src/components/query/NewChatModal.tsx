@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
 import { Send, Shield, Brain, Zap, MessageCircle, ArrowRight } from 'lucide-react';
 import { useQuery } from '@/contexts/query-context';
@@ -149,35 +149,29 @@ export function NewChatModal({ children }: NewChatModalProps) {
         {children}
       </DialogTrigger>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-black/95 backdrop-blur-xl border-white/10">
+        <DialogTitle className="sr-only">Start a new conversation</DialogTitle>
         <div className="relative">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <motion.div
-              className="w-16 h-16 mx-auto mb-4 relative"
-              animate={{
-                scale: [1, 1.05, 1],
+          {/* Simple Input Header */}
+          <div className="mb-8">
+            <input
+              type="text"
+              value={queryText}
+              onChange={(e) => setQueryText(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  // This will trigger the transition to full chat mode
+                  setQueryText(queryText + '\n');
+                }
               }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            >
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 opacity-20 blur-xl" />
-              <div className="relative w-full h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-                <MessageCircle className="w-8 h-8 text-white" />
-              </div>
-            </motion.div>
-            
-            <h2 className="text-2xl font-light text-white mb-2">
-              Start a new conversation
-            </h2>
-            <p className="text-sm text-white/60 font-light">
-              Your messages are automatically protected with privacy-preserving AI
-            </p>
+              placeholder="Start a new conversation"
+              className="w-full p-4 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+              disabled={analyzeMutation.isPending || isProcessing}
+              autoFocus
+            />
           </div>
 
-          {queryText ? (
+          {queryText.includes('\n') ? (
             // Chat Input Mode
             <div className="space-y-6">
               <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6">
@@ -191,7 +185,7 @@ export function NewChatModal({ children }: NewChatModalProps) {
                       onChange={(e) => setQueryText(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="Type your message..."
-                      className="w-full min-h-[100px] bg-transparent text-white placeholder-white/40 resize-none focus:outline-none text-sm leading-relaxed"
+                      className="w-full min-h-[100px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                       disabled={analyzeMutation.isPending || isProcessing}
                       autoFocus
                     />
@@ -225,14 +219,15 @@ export function NewChatModal({ children }: NewChatModalProps) {
               </div>
             </div>
           ) : (
-            // Conversation Starters
-            <div className="space-y-6">
+            // Conversation Starters - always visible unless there's a line break
+            <motion.div 
+              className="space-y-6"
+              animate={{ opacity: queryText.includes('\n') ? 0 : 1 }}
+              transition={{ duration: 0.3 }}
+            >
               <div>
-                <h3 className="text-lg font-light text-white mb-4 text-center">
-                  Choose a conversation starter
-                </h3>
-                <p className="text-xs text-white/40 text-center mb-6">
-                  Or type your own message in any starter to customize it
+                <p className="text-xs text-gray-500 dark:text-white/40 text-center mb-6">
+                  Or choose a conversation starter from below
                 </p>
               </div>
               
@@ -285,7 +280,7 @@ export function NewChatModal({ children }: NewChatModalProps) {
                   Or start typing your own message
                 </button>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Privacy Features */}
