@@ -8,6 +8,7 @@ import type { NodeProps } from '@xyflow/react';
 
 interface NodeData {
   label: string;
+  icon?: React.ComponentType<{ className?: string }>;
   status: 'pending' | 'processing' | 'completed' | 'skipped';
   details?: {
     title?: string;
@@ -45,13 +46,13 @@ function ProcessingFlowNodeComponent(props: ProcessingFlowNodeProps) {
   const getNodeBackground = () => {
     switch (data.status) {
       case 'completed':
-        return 'bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/30 backdrop-blur-sm';
+        return 'bg-green-50 dark:bg-green-500/10 border-2 border-green-400 dark:border-green-500 backdrop-blur-sm';
       case 'processing':
-        return 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 backdrop-blur-sm';
+        return 'bg-blue-50 dark:bg-blue-500/10 border-2 border-blue-400 dark:border-blue-500 backdrop-blur-sm';
       case 'skipped':
-        return 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 opacity-60 backdrop-blur-sm';
+        return 'bg-gray-50 dark:bg-white/5 border-2 border-gray-300 dark:border-gray-500 opacity-60 backdrop-blur-sm';
       default:
-        return 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 backdrop-blur-sm';
+        return 'bg-gray-50 dark:bg-white/5 border-2 border-gray-300 dark:border-white/20 backdrop-blur-sm';
     }
   };
 
@@ -59,13 +60,14 @@ function ProcessingFlowNodeComponent(props: ProcessingFlowNodeProps) {
     <div>
       <Handle type="target" position={Position.Left} className="w-2 h-2" />
       <div 
-        className={`p-4 min-w-[280px] max-w-[320px] transition-all duration-200 cursor-move rounded-xl border ${getNodeBackground()} ${
+        className={`p-4 min-w-[280px] max-w-[320px] transition-all duration-200 cursor-move rounded-xl ${getNodeBackground()} ${
           selected ? 'ring-2 ring-blue-400/50 shadow-xl shadow-blue-500/20' : 'shadow-sm hover:shadow-md'
         }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-light text-sm text-gray-900 dark:text-white flex items-center gap-2">
+            {data.icon && <data.icon className="h-4 w-4 text-gray-600 dark:text-white/70" />}
             <span>{data.label}</span>
           </h3>
           <div className={`w-2 h-2 rounded-full ${getStatusColor()}`} />

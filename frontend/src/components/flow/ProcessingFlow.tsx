@@ -18,7 +18,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Plus } from 'lucide-react';
+import { RotateCcw, Plus, Brain, Search, Scissors, Target, Zap, GitMerge, CheckCircle } from 'lucide-react';
 import { useQuery } from '@/contexts/query-context';
 import { useSSESubscription, useSSEContext } from '@/contexts/sse-context';
 import { ProcessingFlowNode } from './ProcessingFlowNode';
@@ -482,7 +482,8 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         type: 'processingNode',
         position: { x: startX, y: centerY },
         data: { 
-          label: '🧠 Planning',
+          label: 'Planning',
+          icon: Brain,
           status: stepStates.planning,
           details: getNodeDetails('planning')
         },
@@ -493,7 +494,8 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         type: 'processingNode',
         position: { x: startX + nodeSpacing, y: centerY },
         data: { 
-          label: '🔍 PII Detection',
+          label: 'PII Detection',
+          icon: Search,
           status: stepStates.pii_detection,
           details: getNodeDetails('pii_detection')
         },
@@ -504,7 +506,8 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         type: 'processingNode',
         position: { x: startX + (2 * nodeSpacing), y: centerY },
         data: { 
-          label: '✂️ Fragmentation',
+          label: 'Fragmentation',
+          icon: Scissors,
           status: stepStates.fragmentation,
           details: getNodeDetails('fragmentation')
         },
@@ -515,7 +518,8 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         type: 'processingNode',
         position: { x: startX + (3 * nodeSpacing), y: centerY },
         data: { 
-          label: '🎯 Enhancement',
+          label: 'Enhancement',
+          icon: Target,
           status: stepStates.enhancement,
           details: getNodeDetails('enhancement')
         },
@@ -526,7 +530,8 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         type: 'processingNode',
         position: { x: startX + (4 * nodeSpacing), y: centerY },
         data: { 
-          label: fragments.length > 0 ? `🚀 Distribution (${fragments.length})` : '🚀 Distribution',
+          label: fragments.length > 0 ? `Distribution (${fragments.length})` : 'Distribution',
+          icon: Zap,
           status: stepStates.distribution,
           details: getNodeDetails('distribution')
         },
@@ -537,7 +542,8 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         type: 'processingNode',
         position: { x: startX + (5 * nodeSpacing), y: centerY },
         data: { 
-          label: '🔗 Aggregation',
+          label: 'Aggregation',
+          icon: GitMerge,
           status: stepStates.aggregation,
           details: getNodeDetails('aggregation')
         },
@@ -548,7 +554,8 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         type: 'processingNode',
         position: { x: startX + (6 * nodeSpacing), y: centerY },
         data: { 
-          label: '✅ Final Response',
+          label: 'Final Response',
+          icon: CheckCircle,
           status: stepStates.final_response,
           details: getNodeDetails('final_response')
         },

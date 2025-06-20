@@ -51,13 +51,13 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
 
   const getStepTitle = () => {
     const titles = {
-      planning: '🧠 Query Planning & Analysis',
-      pii_detection: '🔍 PII Detection & Classification',
-      fragmentation: '✂️ Query Fragmentation Strategy',
-      enhancement: '🎯 Fragment Optimization & Context',
-      distribution: '🚀 Multi-Provider Distribution',
-      aggregation: '🔗 Response Aggregation',
-      final_response: '✅ Final Response Assembly'
+      planning: 'Query Planning & Analysis',
+      pii_detection: 'PII Detection & Classification',
+      fragmentation: 'Query Fragmentation Strategy',
+      enhancement: 'Fragment Optimization & Context',
+      distribution: 'Multi-Provider Distribution',
+      aggregation: 'Response Aggregation',
+      final_response: 'Final Response Assembly'
     };
     return titles[selectedStep as keyof typeof titles] || selectedStep;
   };
