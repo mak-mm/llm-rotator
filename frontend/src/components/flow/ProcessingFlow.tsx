@@ -18,14 +18,17 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Plus } from 'lucide-react';
 import { useQuery } from '@/contexts/query-context';
 import { useSSESubscription, useSSEContext } from '@/contexts/sse-context';
 import { ProcessingFlowNode } from './ProcessingFlowNode';
+import { NewQueryModal } from '@/components/query/NewQueryModal';
 
 interface ProcessingFlowProps {
   requestId: string | null;
   isProcessing: boolean;
+  onNodeSelect?: (nodeId: string | null) => void;
+  onStepStatesChange?: (stepStates: Record<string, 'pending' | 'processing' | 'completed'>, stepDetails: Record<string, any>, fragments: any[]) => void;
 }
 
 interface StepState {
@@ -65,7 +68,7 @@ interface StepDetails {
   [key: string]: any;
 }
 
-export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps) {
+export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepStatesChange }: ProcessingFlowProps) {
   const { processingSteps } = useQuery();
   const { isConnected } = useSSEContext();
   
@@ -343,9 +346,9 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
         return {
           title: 'Query Analysis',
           items: [
-            { label: 'Complexity score', value: details.complexity_score || '0.85', highlight: true },
-            { label: 'Domains detected', value: details.domains || '2' },
-            { label: 'Estimated fragments', value: details.estimated_fragments || '3-4' }
+            { label: 'Complexity score', value: details.complexity_score ?? 'NaN', highlight: true },
+            { label: 'Domains detected', value: details.domains ?? 'NaN' },
+            { label: 'Estimated fragments', value: details.estimated_fragments ?? 'NaN' }
           ],
           subItems: details.decision ? [
             { text: `Decision: ${details.decision}`, type: 'info' as const }
@@ -356,9 +359,9 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
         return {
           title: 'PII Found',
           items: [
-            { label: 'Entities detected', value: details.entity_count || '3', highlight: true },
-            { label: 'Sensitivity score', value: details.sensitivity_score ? `${(details.sensitivity_score * 100).toFixed(0)}%` : 'HIGH' },
-            { label: 'Confidence', value: details.confidence || '95%' }
+            { label: 'Entities detected', value: details.entity_count ?? 'NaN', highlight: true },
+            { label: 'Sensitivity score', value: details.sensitivity_score ? `${(details.sensitivity_score * 100).toFixed(0)}%` : 'NaN' },
+            { label: 'Confidence', value: details.confidence ?? 'NaN' }
           ],
           subItems: details.entities ? details.entities.map((e: string) => ({
             text: e,
@@ -370,21 +373,21 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
         return {
           title: 'Fragmentation Strategy',
           items: [
-            { label: 'Strategy', value: details.strategy || 'Semantic + Entity' },
-            { label: 'Fragments created', value: details.fragment_count || fragments.length || '4', highlight: true },
-            { label: 'Context isolation', value: details.isolation || '87%' }
+            { label: 'Strategy', value: details.strategy ?? 'NaN' },
+            { label: 'Fragments created', value: details.fragment_count ?? fragments.length || 'NaN', highlight: true },
+            { label: 'Context isolation', value: details.isolation ?? 'NaN' }
           ],
-          subItems: [
+          subItems: details.overlap_minimized ? [
             { text: 'Overlap minimized ✓', type: 'success' as const }
-          ]
+          ] : []
         };
         
       case 'enhancement':
         return {
           title: 'Anonymization Applied',
           items: [
-            { label: 'Entities masked', value: details.masked_count || '3' },
-            { label: 'Context preserved', value: details.context_preservation || '92%', highlight: true }
+            { label: 'Entities masked', value: details.masked_count ?? 'NaN' },
+            { label: 'Context preserved', value: details.context_preservation ?? 'NaN', highlight: true }
           ],
           subItems: details.anonymizations ? details.anonymizations.map((a: string) => ({
             text: a,
@@ -396,9 +399,9 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
         return {
           title: 'Fragment Routing',
           items: [
-            { label: 'Fragments sent', value: fragments.length || '4', highlight: true },
-            { label: 'Providers used', value: details.provider_count || '3' },
-            { label: 'Parallel processing', value: 'Active' }
+            { label: 'Fragments sent', value: fragments.length || 'NaN', highlight: true },
+            { label: 'Providers used', value: details.provider_count ?? 'NaN' },
+            { label: 'Parallel processing', value: details.parallel_processing ?? 'NaN' }
           ],
           subItems: fragments.slice(0, 3).map((f, i) => ({
             text: `Fragment ${i + 1} → ${f.provider.toUpperCase()}`,
@@ -410,23 +413,23 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
         return {
           title: 'Response Aggregation',
           items: [
-            { label: 'Responses received', value: `${details.received || fragments.length}/${fragments.length || '4'}` },
-            { label: 'Coherence score', value: details.coherence || '0.91', highlight: true },
-            { label: 'Ensemble method', value: details.method || 'Weighted' }
+            { label: 'Responses received', value: details.received ? `${details.received}/${fragments.length || '?'}` : 'NaN' },
+            { label: 'Coherence score', value: details.coherence ?? 'NaN', highlight: true },
+            { label: 'Ensemble method', value: details.method ?? 'NaN' }
           ],
-          subItems: [
+          subItems: details.deanonymization_complete ? [
             { text: 'De-anonymization: Complete', type: 'success' as const }
-          ]
+          ] : []
         };
         
       case 'final_response':
         return {
           title: 'Performance Metrics',
           items: [
-            { label: 'Privacy score', value: details.privacy_score ? `${(details.privacy_score * 100).toFixed(0)}%` : '87%', highlight: true },
-            { label: 'Response quality', value: details.response_quality ? details.response_quality.toFixed(2) : '0.90' },
-            { label: 'Total latency', value: details.total_time ? `${details.total_time.toFixed(1)}s` : '1.8s' },
-            { label: 'Cost', value: details.total_cost ? `$${details.total_cost.toFixed(4)}` : '$0.0023' }
+            { label: 'Privacy score', value: details.privacy_score ? `${(details.privacy_score * 100).toFixed(0)}%` : 'NaN', highlight: true },
+            { label: 'Response quality', value: (details.response_quality && typeof details.response_quality === 'number') ? details.response_quality.toFixed(2) : 'NaN' },
+            { label: 'Total latency', value: details.total_time ? `${details.total_time.toFixed(1)}s` : 'NaN' },
+            { label: 'Cost', value: details.total_cost ? `$${details.total_cost.toFixed(4)}` : 'NaN' }
           ]
         };
         
@@ -600,6 +603,11 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
   useEffect(() => {
     setEdges(initialEdges);
   }, [initialEdges]);
+
+  // Notify parent of step state changes
+  useEffect(() => {
+    onStepStatesChange?.(stepStates, stepDetails, fragments);
+  }, [stepStates, stepDetails, fragments, onStepStatesChange]);
   
   // Debug current nodes
   console.log('🎯 Current nodes in state:', nodes);
@@ -610,7 +618,7 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
   }, [initialNodes, setNodes]);
 
   // Resizable container state
-  const [containerHeight, setContainerHeight] = useState(400);
+  const [containerHeight, setContainerHeight] = useState(200);
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -628,7 +636,7 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
       const newHeight = e.clientY - containerRect.top;
       
       // Set min and max heights
-      if (newHeight >= 400 && newHeight <= 1200) {
+      if (newHeight >= 200 && newHeight <= 1200) {
         setContainerHeight(newHeight);
       }
     };
@@ -656,6 +664,17 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Privacy-Preserving Processing Pipeline</h3>
         <div className="flex items-center gap-3">
+          <NewQueryModal>
+            <Button
+              variant="default"
+              size="sm"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              title="Start a new privacy-preserving query"
+            >
+              <Plus className="h-4 w-4" />
+              New Query
+            </Button>
+          </NewQueryModal>
           <Button
             variant="outline"
             size="sm"
@@ -704,6 +723,9 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
             const newSelection = selectedNode === node.id ? null : node.id;
             setSelectedNode(newSelection);
             
+            // Notify parent component of selection
+            onNodeSelect?.(newSelection);
+            
             // Handle distribution node click for fragment panel
             if (node.id === 'distribution' && fragments.length > 0) {
               setSelectedFragment(null); // Clear fragment selection
@@ -713,6 +735,7 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
             console.log('🎯 Pane clicked, clearing selections');
             setSelectedNode(null);
             setSelectedFragment(null);
+            onNodeSelect?.(null);
           }}
         >
           <Background color="#f0f0f0" gap={16} />
