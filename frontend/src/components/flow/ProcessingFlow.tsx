@@ -8,6 +8,7 @@ import {
   Node,
   Edge,
   MarkerType,
+  BackgroundVariant,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Card } from '@/components/ui/card';
@@ -21,6 +22,14 @@ interface ProcessingFlowProps {
 
 interface StepState {
   [key: string]: 'pending' | 'processing' | 'completed';
+}
+
+interface Fragment {
+  id: string;
+  provider: 'openai' | 'anthropic' | 'google';
+  status: 'pending' | 'processing' | 'completed';
+  content?: string;
+  processingTime?: number;
 }
 
 // Map backend step names to frontend display steps
@@ -50,17 +59,78 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
     final_response: 'pending',
   });
 
+  const [fragments, setFragments] = useState<Fragment[]>([]);
+  const [showFragments, setShowFragments] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+
   // Debug logging
   console.log('🎯 ProcessingFlow render - requestId:', requestId, 'isProcessing:', isProcessing, 'SSE connected:', isConnected);
   
   // Subscribe to step progress updates from global SSE connection
-  useSSESubscription('step_progress', (message) => {
+  useSSESubscription(['step_progress', 'complete'], (message) => {
     console.log('🎯 Flow SSE Event:', JSON.stringify(message, null, 2));
     
-    if (message.data) {
-      const { step, status } = message.data;
+    if (message.type === 'step_progress' && message.data) {
+      const { step, status, message: stepMessage } = message.data;
       const mappedStep = stepMapping[step] || step;
       console.log(`🔄 Flow Step Update: ${step} (mapped to ${mappedStep}) -> ${status}`);
+      console.log(`🔄 Step Message: "${stepMessage}"`);
+      
+      // Handle distribution step specially to show fragments
+      if (step === 'distribution') {
+        console.log('🎯 Distribution step detected!', { status, stepMessage });
+        
+        if (status === 'processing') {
+          console.log('🎯 Distribution is processing, checking for fragment message...');
+          
+          // Check for various possible message formats
+          if (stepMessage?.includes('fragments') || stepMessage?.includes('fragment')) {
+            console.log('🎯 Found fragment-related message!');
+            
+            // Try different patterns to extract fragment count
+            let fragmentMatch = stepMessage.match(/(\d+) fragments/);
+            if (!fragmentMatch) {
+              fragmentMatch = stepMessage.match(/Sending (\d+)/);
+            }
+            if (!fragmentMatch) {
+              fragmentMatch = stepMessage.match(/(\d+)/); // Any number
+            }
+            
+            if (fragmentMatch) {
+              const totalFragments = parseInt(fragmentMatch[1]);
+              console.log(`🎯 Creating ${totalFragments} fragment nodes for visualization`);
+              
+              // Create fragments with round-robin provider assignment
+              const newFragments = Array.from({ length: totalFragments }, (_, i) => ({
+                id: `fragment-${i + 1}`,
+                provider: (['openai', 'anthropic', 'google'] as const)[i % 3],
+                status: 'processing' as const
+              }));
+              
+              setFragments(newFragments);
+              // Don't automatically show fragments - wait for distribution node click
+              console.log('🎯 Fragment nodes created:', newFragments);
+            } else {
+              console.log('🎯 Could not extract fragment count from message:', stepMessage);
+              // Fallback: create 3 fragments
+              const newFragments = Array.from({ length: 3 }, (_, i) => ({
+                id: `fragment-${i + 1}`,
+                provider: (['openai', 'anthropic', 'google'] as const)[i % 3],
+                status: 'processing' as const
+              }));
+              
+              setFragments(newFragments);
+              console.log('🎯 Using fallback: 3 fragments created');
+            }
+          } else {
+            console.log('🎯 No fragment message found in:', stepMessage);
+          }
+        } else if (status === 'completed') {
+          console.log('🎯 Distribution completed, marking fragments as completed');
+          // Mark all fragments as completed - keep them persistent
+          setFragments(prev => prev.map(f => ({ ...f, status: 'completed' as const })));
+        }
+      }
       
       // Handle all SSE updates normally
       setStepStates(prev => {
@@ -71,6 +141,22 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
         console.log(`📊 Updating stepStates from:`, prev, `to:`, newState);
         return newState;
       });
+    }
+    
+    // Handle completion to get fragment data
+    if (message.type === 'complete' && message.data) {
+      const { fragments: responseFragments } = message.data;
+      if (responseFragments && Array.isArray(responseFragments)) {
+        setFragments(prev => {
+          return responseFragments.map((frag: any, idx: number) => ({
+            id: frag.id || `fragment-${idx + 1}`,
+            provider: frag.provider || prev[idx]?.provider || 'openai',
+            status: 'completed' as const,
+            content: frag.content,
+            processingTime: frag.processing_time
+          }));
+        });
+      }
     }
   }, []);
   
@@ -146,13 +232,34 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
     }
   }, [requestId]);
 
-  // Generate nodes based on current step states
+  // Provider colors and styles
+  const providerStyles = {
+    openai: {
+      background: 'linear-gradient(135deg, #10a37f 0%, #1a7f64 100%)',
+      border: '2px solid #10a37f',
+      shadow: '0 8px 32px rgba(16, 163, 127, 0.3)'
+    },
+    anthropic: {
+      background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+      border: '2px solid #d97706', 
+      shadow: '0 8px 32px rgba(217, 119, 6, 0.3)'
+    },
+    google: {
+      background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+      border: '2px solid #dc2626',
+      shadow: '0 8px 32px rgba(220, 38, 38, 0.3)'
+    }
+  };
+
+  // Generate nodes based on current step states and fragments
   const nodes: Node[] = useMemo(() => {
-    console.log('📊 Generating nodes with stepStates:', stepStates);
-    return [
+    console.log('📊 Generating nodes with stepStates:', stepStates, 'fragments:', fragments, 'selectedNode:', selectedNode);
+    
+    const baseNodes = [
     {
       id: 'planning',
-      position: { x: 100, y: 100 },
+      type: 'default',
+      position: { x: 150, y: 50 },
       data: { 
         label: '🧠 Planning',
         status: stepStates.planning 
@@ -170,7 +277,8 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
     },
     {
       id: 'pii_detection',
-      position: { x: 300, y: 100 },
+      type: 'default',
+      position: { x: 50, y: 150 },
       data: { 
         label: '🔍 PII Detection',
         status: stepStates.pii_detection 
@@ -188,7 +296,8 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
     },
     {
       id: 'fragmentation',
-      position: { x: 500, y: 100 },
+      type: 'default',
+      position: { x: 200, y: 150 },
       data: { 
         label: '✂️ Fragmentation',
         status: stepStates.fragmentation 
@@ -206,7 +315,8 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
     },
     {
       id: 'enhancement',
-      position: { x: 700, y: 100 },
+      type: 'default',
+      position: { x: 350, y: 150 },
       data: { 
         label: '🎯 Enhancement',
         status: stepStates.enhancement 
@@ -224,25 +334,30 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
     },
     {
       id: 'distribution',
-      position: { x: 400, y: 250 },
+      type: 'default',
+      position: { x: 200, y: 250 },
       data: { 
-        label: '🚀 Distribution',
+        label: fragments.length > 0 ? `🚀 Distribution (${fragments.length})` : '🚀 Distribution',
         status: stepStates.distribution 
       },
       style: {
         background: stepStates.distribution === 'completed' ? '#10b981' : 
                    stepStates.distribution === 'processing' ? '#3b82f6' : '#e5e7eb',
         color: stepStates.distribution === 'pending' ? '#6b7280' : 'white',
-        border: '2px solid #d1d5db',
+        border: fragments.length > 0 && selectedNode === 'distribution' ? '3px solid #1e40af' : '2px solid #d1d5db',
         borderRadius: '8px',
         fontSize: '14px',
         fontWeight: 'bold',
-        padding: '10px'
+        padding: '10px',
+        cursor: fragments.length > 0 ? 'pointer' : 'default',
+        transition: 'all 0.2s ease',
+        boxShadow: fragments.length > 0 && selectedNode === 'distribution' ? '0 0 0 3px rgba(59, 130, 246, 0.2)' : 'none'
       }
     },
     {
       id: 'aggregation',
-      position: { x: 100, y: 400 },
+      type: 'default',
+      position: { x: 100, y: 350 },
       data: { 
         label: '🔗 Aggregation',
         status: stepStates.aggregation 
@@ -260,7 +375,8 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
     },
     {
       id: 'final_response',
-      position: { x: 300, y: 400 },
+      type: 'default',
+      position: { x: 300, y: 350 },
       data: { 
         label: '✅ Final Response',
         status: stepStates.final_response 
@@ -277,7 +393,60 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
       }
     }
   ];
-  }, [stepStates]);
+  
+  // Add fragment nodes when distribution node is selected
+  if (selectedNode === 'distribution' && fragments.length > 0) {
+    const fragmentNodes = fragments.map((fragment, index) => {
+      const angle = (index / fragments.length) * 2 * Math.PI;
+      const radius = 100;
+      const centerX = 200; // Distribution node x position
+      const centerY = 250; // Distribution node y position
+      
+      const x = centerX + Math.cos(angle) * radius;
+      const y = centerY + Math.sin(angle) * radius;
+      
+      // Provider colors
+      const providerColors = {
+        openai: '#10a37f',
+        anthropic: '#d97706', 
+        google: '#dc2626'
+      };
+      
+      return {
+        id: fragment.id,
+        type: 'default',
+        position: { x: x - 40, y: y - 15 },
+        data: { 
+          label: `Fragment ${index + 1}`,
+          provider: fragment.provider.toUpperCase(),
+          status: fragment.status
+        },
+        style: {
+          background: fragment.status === 'completed' 
+            ? `${providerColors[fragment.provider]}dd` // Slightly transparent when completed
+            : providerColors[fragment.provider] || '#6b7280',
+          color: 'white',
+          border: fragment.status === 'processing' ? '2px solid #ffffff' : '1px solid #ffffff',
+          borderRadius: '6px',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          padding: '6px 10px',
+          minWidth: '80px',
+          textAlign: 'center',
+          opacity: fragment.status === 'completed' ? 0.8 : 1,
+          boxShadow: fragment.status === 'processing' 
+            ? '0 0 8px rgba(255, 255, 255, 0.5)' 
+            : '0 2px 4px rgba(0, 0, 0, 0.1)',
+          transition: 'all 0.3s ease'
+        }
+      };
+    });
+    
+    baseNodes.push(...fragmentNodes);
+  }
+  
+  return baseNodes;
+  }, [stepStates, fragments, selectedNode]);
 
   const edges: Edge[] = useMemo(() => [
     {
@@ -346,6 +515,21 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
           edges={edges}
           fitView
           attributionPosition="bottom-left"
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable={true}
+          onNodeClick={(event, node) => {
+            console.log('🎯 Node clicked:', node.id, 'Current selectedNode:', selectedNode, 'Fragments:', fragments.length);
+            if (node.id === 'distribution' && fragments.length > 0) {
+              const newSelection = selectedNode === 'distribution' ? null : 'distribution';
+              console.log('🎯 Setting selectedNode to:', newSelection);
+              setSelectedNode(newSelection);
+            }
+          }}
+          onPaneClick={() => {
+            console.log('🎯 Pane clicked, hiding fragments');
+            setSelectedNode(null);
+          }}
         >
           <Background />
           <Controls />
@@ -364,6 +548,12 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
           <div className="w-3 h-3 bg-green-500 rounded"></div>
           <span>Completed</span>
         </div>
+        {fragments.length > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-purple-500 rounded animate-pulse"></div>
+            <span>Click Distribution to view fragments</span>
+          </div>
+        )}
       </div>
     </Card>
   );

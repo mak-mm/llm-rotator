@@ -56,7 +56,8 @@ async def lifespan(app: FastAPI):
             provider_id="openai",
             provider_type=ProviderType.OPENAI,
             api_key=os.getenv("OPENAI_API_KEY"),
-            model_name=os.getenv("OPENAI_MODEL", "gpt-4"),
+            # model_name=os.getenv("OPENAI_MODEL", "gpt-4"),
+            model_name=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),  # Using 4o-mini for consistency
             max_tokens=4000,
             temperature=0.7
         )

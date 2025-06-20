@@ -341,12 +341,12 @@ async def process_query_background(
                     from src.providers.models import LLMRequest
                     start_time = time.time()
                     
-                    # Create proper LLM request
+                    # Create optimized LLM request for fragment processing
                     llm_request = LLMRequest(
                         request_id=f"frag_{fragment.id}",
                         prompt=fragment.content,
-                        temperature=0.7,
-                        max_tokens=1000
+                        temperature=0.3,  # Lower temperature for faster, more consistent responses
+                        max_tokens=500    # Reduced tokens for fragment responses
                     )
                     
                     response = await provider.generate(llm_request)
