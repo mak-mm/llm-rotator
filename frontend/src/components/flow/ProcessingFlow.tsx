@@ -440,11 +440,11 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         
       case 'aggregation':
         return {
-          title: 'Response Aggregation',
+          title: 'Intelligent Aggregation',
           items: [
             { label: 'Responses received', value: details.received ? `${details.received}/${fragments.length || '?'}` : 'NaN' },
             { label: 'Coherence score', value: details.coherence ?? 'NaN', highlight: true },
-            { label: 'Ensemble method', value: details.method ?? 'NaN' }
+            { label: 'Aggregation method', value: details.method ?? 'NaN' }
           ],
           subItems: details.deanonymization_complete ? [
             { text: 'De-anonymization: Complete', type: 'success' as const }

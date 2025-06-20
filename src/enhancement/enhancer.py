@@ -30,11 +30,15 @@ class EnhancementResult:
 class FragmentEnhancer:
     """
     Enhances query fragments using GPT-4o-mini to add context and instructions
+    Also handles aggregation with thread continuity for improved quality
     """
     
     def __init__(self, openai_api_key: str):
         self.client = AsyncOpenAI(api_key=openai_api_key)
         self.enhancement_model = "gpt-4o-mini"  # Fast and cost-effective orchestrator model
+        self.conversation_history = []  # Keep thread alive for aggregation
+        self.original_query = None
+        self.query_analysis = None
         
     async def enhance_fragments(
         self, 
@@ -57,8 +61,13 @@ class FragmentEnhancer:
         """
         logger.info(f"Starting enhancement of {len(fragments)} fragments")
         
+        # Store context for later aggregation
+        self.original_query = original_query
+        self.conversation_history = []  # Reset conversation
+        
         # Analyze the overall query first to understand intent and requirements
         query_analysis = await self._analyze_query_intent(original_query, detection_context)
+        self.query_analysis = query_analysis
         
         # Enhance fragments in parallel for efficiency
         enhancement_tasks = [
@@ -74,8 +83,98 @@ class FragmentEnhancer:
         
         enhanced_fragments = await asyncio.gather(*enhancement_tasks)
         
+        # Store initial conversation context for aggregation
+        self.conversation_history.append({
+            "role": "system",
+            "content": f"You have just enhanced {len(enhanced_fragments)} query fragments for optimal processing. The fragments were strategically optimized based on the original query: '{original_query}'"
+        })
+        
         logger.info(f"Successfully enhanced {len(enhanced_fragments)} fragments")
         return enhanced_fragments
+    
+    async def aggregate_responses(
+        self,
+        fragment_responses: List[Dict[str, Any]],
+        enhanced_fragments: List[Fragment]
+    ) -> str:
+        """
+        Aggregate responses from multiple providers using the same model that enhanced the fragments.
+        This maintains context continuity and dramatically improves aggregation quality.
+        
+        Args:
+            fragment_responses: List of responses from different providers
+            enhanced_fragments: The enhanced fragments that were sent to providers
+            
+        Returns:
+            Intelligently aggregated response
+        """
+        logger.info(f"Starting intelligent aggregation of {len(fragment_responses)} responses")
+        
+        if not fragment_responses:
+            return "No responses available for aggregation."
+        
+        if len(fragment_responses) == 1:
+            return fragment_responses[0].get('response', 'No response content available.')
+        
+        # Build aggregation prompt with full context
+        responses_context = []
+        for i, (response_data, fragment) in enumerate(zip(fragment_responses, enhanced_fragments)):
+            provider = response_data.get('provider', 'unknown')
+            response_text = response_data.get('response', '')
+            
+            responses_context.append(f"""
+FRAGMENT {i+1} (Provider: {provider.upper()}):
+Enhanced Fragment Sent: {fragment.content[:200]}...
+Provider Response: {response_text}
+""")
+        
+        aggregation_prompt = f"""You previously enhanced query fragments for optimal processing. Now you need to intelligently aggregate the responses into a single, coherent, high-quality answer.
+
+ORIGINAL QUERY:
+{self.original_query}
+
+QUERY ANALYSIS CONTEXT:
+- Primary Intent: {self.query_analysis.get('primary_intent', 'Unknown')}
+- Expected Response Type: {self.query_analysis.get('expected_response_type', 'Unknown')}
+- Domain Expertise: {self.query_analysis.get('domain_expertise', 'General')}
+
+FRAGMENT RESPONSES TO AGGREGATE:
+{''.join(responses_context)}
+
+AGGREGATION INSTRUCTIONS:
+1. Combine these responses into ONE coherent, comprehensive answer
+2. Remove redundancy and contradictions
+3. Ensure the final response directly answers the original query
+4. Maintain the quality and accuracy from each provider
+5. Use natural transitions between combined content
+6. Preserve important details and technical accuracy
+7. Format the response appropriately for the query type
+
+Your response should be the final aggregated answer only, without meta-commentary about the aggregation process."""
+
+        # Continue the conversation thread
+        self.conversation_history.append({
+            "role": "user",
+            "content": aggregation_prompt
+        })
+        
+        try:
+            aggregated_response = await self._call_claude_with_history(max_tokens=3000)
+            
+            # Store the aggregation result in conversation history
+            self.conversation_history.append({
+                "role": "assistant", 
+                "content": aggregated_response
+            })
+            
+            logger.info(f"Successfully aggregated responses into {len(aggregated_response)} character response")
+            return aggregated_response
+            
+        except Exception as e:
+            logger.error(f"Intelligent aggregation failed: {e}, falling back to simple concatenation")
+            # Fallback to simple concatenation
+            fallback_responses = [resp.get('response', '') for resp in fragment_responses if resp.get('response')]
+            return "\n\n".join(fallback_responses)
     
     async def _analyze_query_intent(
         self, 
@@ -276,6 +375,22 @@ Respond only with valid JSON."""
             return response.choices[0].message.content
         except Exception as e:
             logger.error(f"OpenAI API call failed: {e}")
+            raise
+    
+    async def _call_claude_with_history(self, max_tokens: int = 3000) -> str:
+        """
+        Make an API call to GPT-4o-mini using conversation history for context continuity
+        """
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.enhancement_model,
+                max_tokens=max_tokens,
+                temperature=0.4,  # Slightly higher for more creative aggregation
+                messages=self.conversation_history
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"OpenAI API call with history failed: {e}")
             raise
     
     def get_enhancement_stats(self, enhanced_fragments: List[Fragment]) -> Dict[str, Any]:

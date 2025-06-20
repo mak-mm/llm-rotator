@@ -69,7 +69,7 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
       fragmentation: 'Creates privacy-preserving query fragments using semantic analysis and entity-based splitting to minimize context exposure.',
       enhancement: 'Optimizes fragment segmentation and adds appropriate context to each fragment to ensure coherent responses while maintaining query intent.',
       distribution: 'Routes fragments to optimal LLM providers based on cost, capabilities, and sensitivity requirements for parallel processing.',
-      aggregation: 'Combines partial responses using weighted ensemble methods to ensure coherent, high-quality final output.',
+      aggregation: 'Intelligently combines partial responses using the same GPT-4o-mini model that enhanced the fragments, maintaining thread continuity for superior aggregation quality.',
       final_response: 'Assembles the complete response with privacy scoring, quality metrics, and performance analytics for delivery.'
     };
     return descriptions[selectedStep as keyof typeof descriptions] || 'Processing step in the privacy-preserving pipeline.';
