@@ -36,17 +36,31 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
   const [currentMessage, setCurrentMessage] = useState(PROCESSING_MESSAGES[0]);
   const [progress, setProgress] = useState(0);
   const [finalResponse, setFinalResponse] = useState<string | undefined>();
+  const [detailedSteps, setDetailedSteps] = useState<string[]>([]);
 
   // Subscribe to SSE events
   useSSESubscription(['step_progress', 'complete'], (message) => {
     if (message.type === 'step_progress' && message.data) {
-      const { step, status, progress: stepProgress } = message.data;
+      const { step, status, progress: stepProgress, message: stepMessage } = message.data;
       
       // Map step to message index
       const messageIndex = STEP_TO_MESSAGE_INDEX[step];
       if (messageIndex !== undefined && status === 'processing') {
         setCurrentMessageIndex(messageIndex);
         setCurrentMessage(PROCESSING_MESSAGES[messageIndex]);
+      }
+      
+      // Update detailed steps with the step message
+      if (stepMessage && status === 'processing') {
+        setDetailedSteps(prev => {
+          const newSteps = [...prev];
+          // Keep only the last 3 detailed steps
+          if (newSteps.length >= 3) {
+            newSteps.shift();
+          }
+          newSteps.push(stepMessage);
+          return newSteps;
+        });
       }
       
       // Update overall progress
@@ -81,6 +95,7 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
       setCurrentMessage(PROCESSING_MESSAGES[0]);
       setProgress(0);
       setFinalResponse(undefined);
+      setDetailedSteps([]);
     }
   }, [isVisible]);
 
@@ -211,6 +226,65 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
                 transition={{ delay: index * 0.1 }}
               />
             ))}
+          </div>
+        </div>
+
+        {/* Detailed steps at the bottom */}
+        <div className="absolute bottom-0 left-0 right-0 p-8">
+          <div className="max-w-4xl mx-auto">
+            <AnimatePresence mode="sync">
+              {detailedSteps.map((step, index) => (
+                <motion.div
+                  key={`${step}-${index}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ 
+                    opacity: index === detailedSteps.length - 1 ? 1 : 0.4,
+                    y: 0,
+                    scale: index === detailedSteps.length - 1 ? 1 : 0.95
+                  }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-center mb-2"
+                >
+                  <div className="inline-flex items-center gap-2">
+                    <motion.div
+                      className={`w-2 h-2 rounded-full ${
+                        index === detailedSteps.length - 1 
+                          ? 'bg-gradient-to-r from-blue-400 to-purple-400' 
+                          : 'bg-white/30'
+                      }`}
+                      animate={index === detailedSteps.length - 1 ? {
+                        scale: [1, 1.5, 1],
+                      } : {}}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                      }}
+                    />
+                    <span className={`text-sm font-light ${
+                      index === detailedSteps.length - 1 
+                        ? 'text-white' 
+                        : 'text-white/40'
+                    }`}>
+                      {step}
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            
+            {/* Current action indicator */}
+            {detailedSteps.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-4 text-center"
+              >
+                <span className="text-xs text-white/50 uppercase tracking-wider">
+                  Processing Step {currentMessageIndex + 1} of {PROCESSING_MESSAGES.length}
+                </span>
+              </motion.div>
+            )}
           </div>
         </div>
       </motion.div>
