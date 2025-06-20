@@ -320,18 +320,11 @@ async def process_query_background(
                 logger.error("Provider manager not available")
                 raise Exception("Provider manager not initialized")
             
-            # Process fragments one by one for better real-time feedback
-            for idx, fragment in enumerate(fragments):
+            # Process fragments in parallel for maximum speed
+            async def process_fragment(fragment, idx):
                 try:
                     # Log fragment processing
                     logger.info(f"[{request_id}] Processing fragment {idx+1}/{len(fragments)} with {fragment.provider.value.upper()}...")
-                    
-                    # Send SSE update for fragment processing
-                    progress = int(((idx + 0.5) / len(fragments)) * 100)
-                    await sse_manager.send_step_update(
-                        request_id, "distribution", "processing", progress,
-                        f"Processing fragment {idx+1}/{len(fragments)} with {fragment.provider.value.upper()}..."
-                    )
                     
                     # Record provider routing decision
                     await investor_metrics_collector.record_provider_routing(
@@ -361,31 +354,47 @@ async def process_query_background(
                     
                     logger.info(f"[{request_id}] Fragment {idx+1}/{len(fragments)} completed by {fragment.provider.value.upper()} in {processing_time:.2f}s")
                     
-                    # Send SSE update for fragment completion
-                    progress = int(((idx + 1) / len(fragments)) * 100)
-                    await sse_manager.send_step_update(
-                        request_id, "distribution", "processing", progress,
-                        f"Fragment {idx+1}/{len(fragments)} completed by {fragment.provider.value.upper()}"
-                    )
-                    
-                    fragment_responses.append(FragmentResponse(
+                    return FragmentResponse(
                         fragment_id=fragment.id,
                         provider=fragment.provider,
                         response=response.content,
                         processing_time=processing_time,
                         tokens_used=getattr(response, 'tokens_used', None)
-                    ))
-                    
+                    )
                     
                 except Exception as e:
                     logger.error(f"Error getting response from {fragment.provider}: {str(e)}")
                     # Fallback response
-                    fragment_responses.append(FragmentResponse(
+                    return FragmentResponse(
                         fragment_id=fragment.id,
                         provider=fragment.provider,
                         response=f"Error processing fragment: {str(e)}",
                         processing_time=0.0
-                    ))
+                    )
+            
+            # Send initial SSE update
+            await sse_manager.send_step_update(
+                request_id, "distribution", "processing", 10,
+                f"🚀 Sending {len(fragments)} fragments to providers in parallel..."
+            )
+            
+            # Log parallel processing start
+            logger.info(f"[{request_id}] Starting PARALLEL processing of {len(fragments)} fragments")
+            parallel_start_time = time.time()
+            
+            # Process all fragments in parallel
+            fragment_tasks = [process_fragment(fragment, idx) for idx, fragment in enumerate(fragments)]
+            fragment_responses = await asyncio.gather(*fragment_tasks)
+            
+            # Calculate parallel processing time
+            parallel_time = time.time() - parallel_start_time
+            logger.info(f"[{request_id}] PARALLEL processing completed in {parallel_time:.2f}s (vs sequential estimate: {parallel_time * len(fragments):.2f}s)")
+            
+            # Send completion SSE update
+            await sse_manager.send_step_update(
+                request_id, "distribution", "processing", 90,
+                f"✅ All {len(fragments)} fragments processed in parallel ({parallel_time:.1f}s)"
+            )
             
             # Log distribution completion
             logger.info(f"[{request_id}] STEP 5 COMPLETE: All fragments processed")
