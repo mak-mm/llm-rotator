@@ -22,7 +22,7 @@ import { RotateCcw, Plus } from 'lucide-react';
 import { useQuery } from '@/contexts/query-context';
 import { useSSESubscription, useSSEContext } from '@/contexts/sse-context';
 import { ProcessingFlowNode } from './ProcessingFlowNode';
-import { NewQueryModal } from '@/components/query/NewQueryModal';
+import { NewChatModal } from '@/components/query/NewChatModal';
 
 interface ProcessingFlowProps {
   requestId: string | null;
@@ -691,17 +691,17 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Privacy-Preserving Processing Pipeline</h3>
         <div className="flex items-center gap-3">
-          <NewQueryModal>
+          <NewChatModal>
             <Button
               variant="default"
               size="sm"
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-              title="Start a new privacy-preserving query"
+              title="Start a new privacy-preserving chat"
             >
               <Plus className="h-4 w-4" />
-              New Query
+              New Chat
             </Button>
-          </NewQueryModal>
+          </NewChatModal>
           <Button
             variant="outline"
             size="sm"
