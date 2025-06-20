@@ -40,7 +40,7 @@ export function useSSE(url: string | null, options: SSEOptions = {}) {
 
     try {
       // Ensure we have the full URL with proper base
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8003';
       const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
       
       console.log('🔄 SSE connecting to:', fullUrl);

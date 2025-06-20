@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSE Test</title>
+</head>
+<body>
+    <h1>SSE Event Monitor</h1>
+    <button onclick="submitQuery()">Submit Test Query</button>
+    <div id="events"></div>
+    
+    <script>
+        let requestId = null;
+        let eventSource = null;
+        
+        async function submitQuery() {
+            const response = await fetch('http://localhost:8003/api/v1/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: "Test query with some personal info like john.doe@email.com",
+                    strategy: "hybrid",
+                    use_orchestrator: true
+                })
+            });
+            
+            const data = await response.json();
+            requestId = data.request_id;
+            console.log('Got request ID:', requestId);
+            
+            // Now connect to SSE
+            connectSSE(requestId);
+        }
+        
+        function connectSSE(reqId) {
+            eventSource = new EventSource(`http://localhost:8003/api/v1/stream/${reqId}`);
+            
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('SSE Event:', data);
+                
+                const div = document.createElement('div');
+                div.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                document.getElementById('events').appendChild(div);
+                
+                if (data.type === 'step_progress') {
+                    console.log(`Step: ${data.data.step} -> ${data.data.status}`);
+                }
+            };
+            
+            eventSource.onerror = (error) => {
+                console.error('SSE Error:', error);
+            };
+        }
+    </script>
+</body>
+</html>

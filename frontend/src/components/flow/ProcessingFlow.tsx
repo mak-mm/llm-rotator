@@ -12,7 +12,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Card } from '@/components/ui/card';
 import { useQuery } from '@/contexts/query-context';
-import { useSSESubscription } from '@/contexts/sse-context';
+import { useSSESubscription, useSSEContext } from '@/contexts/sse-context';
 
 interface ProcessingFlowProps {
   requestId: string | null;
@@ -38,6 +38,7 @@ const stepMapping: Record<string, string> = {
 
 export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps) {
   const { processingSteps } = useQuery();
+  const { isConnected } = useSSEContext();
   
   const [stepStates, setStepStates] = useState<StepState>({
     planning: 'pending',
@@ -49,6 +50,9 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
     final_response: 'pending',
   });
 
+  // Debug logging
+  console.log('🎯 ProcessingFlow render - requestId:', requestId, 'isProcessing:', isProcessing, 'SSE connected:', isConnected);
+  
   // Subscribe to step progress updates from global SSE connection
   useSSESubscription('step_progress', (message) => {
     console.log('🎯 Flow SSE Event:', JSON.stringify(message, null, 2));
@@ -58,14 +62,8 @@ export function ProcessingFlow({ requestId, isProcessing }: ProcessingFlowProps)
       const mappedStep = stepMapping[step] || step;
       console.log(`🔄 Flow Step Update: ${step} (mapped to ${mappedStep}) -> ${status}`);
       
-      // Handle all SSE updates normally - no artificial delays needed
+      // Handle all SSE updates normally
       setStepStates(prev => {
-        // For processing status, only update if not already completed
-        if (status === 'processing' && prev[mappedStep] === 'completed') {
-          console.log(`⚠️ Skipping processing update for already completed step: ${mappedStep}`);
-          return prev;
-        }
-        
         const newState = {
           ...prev,
           [mappedStep]: status

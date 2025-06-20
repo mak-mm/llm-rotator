@@ -25,11 +25,9 @@ import {
   ChevronRight 
 } from "lucide-react";
 import { toast } from "sonner";
-import { useAnalyzeQuery, useQueryStatus } from "@/hooks/useQuery";
+import { useAnalyzeQuery } from "@/hooks/useQuery";
 import { useQuery } from "@/contexts/query-context";
-import { InvestorDashboard } from "@/components/visualization/investor-dashboard";
-import { useSSEContext, useSSESubscription } from "@/contexts/sse-context";
-import { queryService } from "@/lib/api";
+import { useSSEContext } from "@/contexts/sse-context";
 import type { AnalyzeRequest, AnalyzeResponse } from "@/lib/api";
 
 const PRIVACY_LEVELS = [
@@ -131,98 +129,27 @@ export function QueryInterface() {
   const [query, setQuery] = useState("");
   const [privacyLevel, setPrivacyLevel] = useState<"low" | "medium" | "high">("medium");
   const [showPrivacyViz, setShowPrivacyViz] = useState(true);
-  const [currentResponse, setCurrentResponse] = useState<AnalyzeResponse | null>(null);
-  const [isPollingResult, setIsPollingResult] = useState(false);
   const { setActiveRequestId, isConnected } = useSSEContext();
 
   // Context for sharing query state and investor metrics
+  // All SSE updates are now handled by QuerySSEService
   const { 
     setCurrentQuery, 
-    setQueryResult, 
-    setIsProcessing, 
+    queryResult,
+    setIsProcessing,
+    isProcessing,
     investorMetrics, 
     realTimeData, 
     resetInvestorData,
     requestId,
     setRequestId,
-    updateProcessingStep,
-    updateRealTimeData
   } = useQuery();
 
   // Hooks for API calls
   const analyzeMutation = useAnalyzeQuery();
-  const statusQuery = useQueryStatus(requestId, !!requestId);
 
-  // Function to fetch final result
-  const fetchFinalResult = async () => {
-    if (!requestId) return;
-    
-    try {
-      const result = await queryService.getResult(requestId);
-      console.log('✅ Got final result:', result);
-      
-      // Update state with the final result
-      setCurrentResponse(result);
-      setQueryResult(result);
-      setIsProcessing(false);
-      setIsPollingResult(false);
-      
-      // Clear active request ID since processing is complete
-      setActiveRequestId(null);
-      
-      toast.success('Query processing completed');
-    } catch (error) {
-      console.error('Failed to fetch final result:', error);
-      setIsProcessing(false);
-      setIsPollingResult(false);
-      
-      // Clear active request ID on error
-      setActiveRequestId(null);
-      
-      toast.error('Failed to get query result');
-    }
-  };
-
-  // Subscribe to step progress updates
-  useSSESubscription(['step_progress', 'investor_kpis', 'complete'], (message) => {
-    console.log('🔄 SSE Update:', JSON.stringify(message, null, 2));
-    
-    // Handle step progress updates
-    if (message.type === 'step_progress' && message.data) {
-      const { step, status, progress, message: stepMessage } = message.data;
-      console.log(`📊 Step Update: ${step} -> ${status} (${progress}%) - ${stepMessage || 'no message'}`);
-      updateProcessingStep(step, status, progress, stepMessage);
-      
-      // If final response is completed, fetch the result
-      if (step === 'final_response' && status === 'completed') {
-        setIsPollingResult(true);
-        fetchFinalResult();
-      }
-    }
-    
-    // Handle KPI updates from investor metrics
-    if (message.type === 'investor_kpis' && message.data) {
-      console.log('📊 KPI Update received:', message.data);
-      updateRealTimeData({
-        kpi_update: {
-          privacy_score: message.data.privacy_score,
-          cost_savings: message.data.cost_savings,
-          system_efficiency: message.data.system_efficiency,
-          processing_speed: message.data.processing_speed,
-          throughput_rate: message.data.throughput_rate,
-          roi_potential: message.data.roi_potential,
-          timestamp: message.data.timestamp
-        }
-      });
-    }
-    
-    // Also handle the complete event
-    if (message.type === 'complete') {
-      // Final response is ready, fetch the result
-      setIsPollingResult(true);
-      fetchFinalResult();
-    }
-  }, [updateProcessingStep, updateRealTimeData, fetchFinalResult]);
+  // Use queryResult from context instead of local state
+  const currentResponse = queryResult;
 
   const handleSubmit = async () => {
     if (!query.trim()) {
@@ -248,7 +175,6 @@ export function QueryInterface() {
       
       // Now that we have confirmation the query was accepted, reset state
       resetInvestorData();
-      setQueryResult(null); // Clear only after we know new processing is starting
       
       // Store the request ID for SSE connection (don't clear and reset - just update)
       console.log('🚀 Got request ID:', initialResponse.request_id);
@@ -356,11 +282,11 @@ export function QueryInterface() {
               </Button>
             </div>
 
-            {(analyzeMutation.isPending || isPollingResult) && (
+            {(analyzeMutation.isPending || isProcessing) && (
               <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <div className="flex justify-between text-sm">
                   <span className="font-medium">
-                    {isPollingResult ? 'Fetching results...' : 'Processing query...'}
+                    Processing query...
                   </span>
                   <span className="text-muted-foreground">
                     {isConnected ? '🟢 Real-time updates connected' : 'This may take up to 2 minutes'}
