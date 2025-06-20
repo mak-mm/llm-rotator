@@ -153,10 +153,19 @@ export function NewChatModal({ children }: NewChatModalProps) {
         <div className="relative">
           {/* Simple Input Header */}
           <div className="mb-8">
-            <input
-              type="text"
+            <textarea
               value={queryText}
-              onChange={(e) => setQueryText(e.target.value)}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setQueryText(newValue);
+                
+                // Check if text would wrap by comparing scroll height with client height
+                const textarea = e.target as HTMLTextAreaElement;
+                if (textarea.scrollHeight > textarea.clientHeight && !newValue.includes('\n')) {
+                  // Text is wrapping, trigger transition to chat mode
+                  setQueryText(newValue + '\n');
+                }
+              }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -165,7 +174,8 @@ export function NewChatModal({ children }: NewChatModalProps) {
                 }
               }}
               placeholder="Start a new conversation"
-              className="w-full p-4 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+              className="w-full p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 shadow-sm text-base transition-all resize-none overflow-hidden"
+              rows={1}
               disabled={analyzeMutation.isPending || isProcessing}
               autoFocus
             />
