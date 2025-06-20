@@ -104,6 +104,7 @@ export function NewQueryModal({ children }: NewQueryModalProps) {
       setActiveRequestId(initialResponse.request_id);
       
       // Close modal and clear input on success
+      console.log('🚀 Modal submission successful, closing modal');
       setIsOpen(false);
       setQueryText('');
       

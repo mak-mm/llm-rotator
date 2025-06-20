@@ -8,7 +8,7 @@ import type { NodeProps } from '@xyflow/react';
 
 interface NodeData {
   label: string;
-  status: 'pending' | 'processing' | 'completed';
+  status: 'pending' | 'processing' | 'completed' | 'skipped';
   details?: {
     title?: string;
     items?: Array<{
@@ -35,6 +35,8 @@ function ProcessingFlowNodeComponent(props: ProcessingFlowNodeProps) {
         return 'bg-green-500';
       case 'processing':
         return 'bg-blue-500';
+      case 'skipped':
+        return 'bg-gray-400 opacity-50';
       default:
         return 'bg-gray-300';
     }
@@ -46,6 +48,8 @@ function ProcessingFlowNodeComponent(props: ProcessingFlowNodeProps) {
         return 'bg-green-50 border-green-200';
       case 'processing':
         return 'bg-blue-50 border-blue-200';
+      case 'skipped':
+        return 'bg-gray-50 border-gray-200 opacity-60';
       default:
         return 'bg-gray-50 border-gray-200';
     }

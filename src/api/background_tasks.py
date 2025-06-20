@@ -531,10 +531,47 @@ async def process_query_background(
                 }
             )
         else:
-            # No fragmentation needed
+            # No fragmentation needed - send directly to a single provider
             fragments = []
             fragment_responses = []
-            aggregated_response = "Query did not require fragmentation due to low sensitivity."
+            
+            # For simple queries, send directly to GPT-4o-mini without fragmentation
+            logger.info(f"[{request_id}] Processing simple query directly with GPT-4o-mini...")
+            
+            import os
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+            if openai_api_key:
+                try:
+                    import openai
+                    
+                    # Use GPT-4o-mini for simple queries (same as fragment enhancement)
+                    client = openai.AsyncOpenAI(api_key=openai_api_key)
+                    
+                    response = await client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {
+                                "role": "system", 
+                                "content": "You are a helpful AI assistant. Provide accurate, helpful responses to user queries."
+                            },
+                            {
+                                "role": "user", 
+                                "content": query_request.query
+                            }
+                        ],
+                        temperature=0.7,
+                        max_tokens=2000
+                    )
+                    
+                    aggregated_response = response.choices[0].message.content
+                    logger.info(f"[{request_id}] Simple query processed successfully with GPT-4o-mini")
+                    
+                except Exception as e:
+                    logger.error(f"[{request_id}] GPT-4o-mini processing failed: {e}")
+                    aggregated_response = f"Error processing simple query with GPT-4o-mini: {str(e)}"
+            else:
+                logger.warning(f"[{request_id}] OpenAI API key not available for simple query processing")
+                aggregated_response = "Error: OpenAI API key not configured for simple query processing."
 
         # Calculate total processing time
         total_time = time.time() - start_time
@@ -582,7 +619,8 @@ async def process_query_background(
                 "privacy_score": privacy_score,
                 "response_quality": response_quality,
                 "total_time": total_time,
-                "total_cost": total_cost
+                "total_cost": total_cost,
+                "final_response": aggregated_response
             }
         )
         
@@ -595,7 +633,9 @@ async def process_query_background(
             "total_cost": total_cost,
             "fragments_processed": len(fragments),
             "providers_used": len(set(f.provider.value for f in fragments)) if fragments else 0,
-            "fragments": [f.model_dump() for f in fragments] if fragments else []
+            "fragments": [f.model_dump() for f in fragments] if fragments else [],
+            "aggregated_response": aggregated_response,
+            "final_response": aggregated_response
         })
         
         logger.info(f"[{request_id}] Query processing COMPLETE")

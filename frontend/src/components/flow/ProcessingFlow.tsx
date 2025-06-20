@@ -33,7 +33,7 @@ interface ProcessingFlowProps {
 }
 
 interface StepState {
-  [key: string]: 'pending' | 'processing' | 'completed';
+  [key: string]: 'pending' | 'processing' | 'completed' | 'skipped';
 }
 
 interface Fragment {
@@ -194,6 +194,7 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
     // Handle completion to get final metrics
     if (message.type === 'complete' && message.data) {
       console.log('🎯 Complete event with data:', message.data);
+      console.log('🎯 Final response in completion:', message.data.final_response || message.data.aggregated_response);
       const { fragments: responseFragments, privacy_score, response_quality, total_cost, total_time } = message.data;
       
       // Show success toast when query is actually completed
@@ -203,19 +204,23 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
       setIsProcessing(false);
       console.log('🔄 Processing completed, clearing isProcessing state');
       
-      // Mark all steps as completed (including skipped ones for simple queries)
+      // Mark appropriate steps as completed or skipped based on whether fragmentation occurred
       setStepStates(prev => {
-        const completedStates = {
+        // Check if this was a simple query (no fragments)
+        const wasSimpleQuery = !responseFragments || responseFragments.length === 0;
+        
+        const finalStates = {
           planning: 'completed' as const,
           pii_detection: 'completed' as const,
-          fragmentation: 'completed' as const,
-          enhancement: 'completed' as const,
-          distribution: 'completed' as const,
-          aggregation: 'completed' as const,
+          fragmentation: wasSimpleQuery ? 'skipped' as const : 'completed' as const,
+          enhancement: wasSimpleQuery ? 'skipped' as const : 'completed' as const,
+          distribution: wasSimpleQuery ? 'skipped' as const : 'completed' as const,
+          aggregation: wasSimpleQuery ? 'skipped' as const : 'completed' as const,
           final_response: 'completed' as const,
         };
-        console.log('📊 Marking all steps as completed for final response');
-        return completedStates;
+        
+        console.log('📊 Setting final step states:', finalStates);
+        return finalStates;
       });
       
       // Update final response details
@@ -226,7 +231,8 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
             privacy_score,
             response_quality,
             total_cost,
-            total_time
+            total_time,
+            final_response: message.data.final_response || message.data.aggregated_response
           }
         }));
       }
@@ -792,6 +798,10 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-500 rounded"></div>
           <span>Completed</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-gray-400 rounded opacity-60"></div>
+          <span>Skipped</span>
         </div>
         {fragments.length > 0 && (
           <div className="flex items-center gap-2">
