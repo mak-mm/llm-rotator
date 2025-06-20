@@ -290,15 +290,15 @@ export function NewChatModal({ children }: NewChatModalProps) {
 
           {/* Privacy Features */}
           <div className="flex justify-center gap-6 pt-6 mt-6 border-t border-white/10">
-            <div className="flex items-center gap-2 text-white/40">
+            <div className="flex items-center gap-2 text-gray-600 dark:text-white/40">
               <Shield className="w-3 h-3" />
               <span className="text-xs">Privacy Protected</span>
             </div>
-            <div className="flex items-center gap-2 text-white/40">
+            <div className="flex items-center gap-2 text-gray-600 dark:text-white/40">
               <Zap className="w-3 h-3" />
               <span className="text-xs">Instant Fragmentation</span>
             </div>
-            <div className="flex items-center gap-2 text-white/40">
+            <div className="flex items-center gap-2 text-gray-600 dark:text-white/40">
               <Brain className="w-3 h-3" />
               <span className="text-xs">AI-Powered</span>
             </div>

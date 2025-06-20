@@ -93,7 +93,7 @@ function HomeContent() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-white dark:bg-black">
       <Header />
       
       <main className="container mx-auto px-4 py-8">

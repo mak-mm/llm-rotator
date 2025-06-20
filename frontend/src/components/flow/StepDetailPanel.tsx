@@ -107,24 +107,24 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-500/10 backdrop-blur-sm border border-blue-500/20 p-3 rounded-lg">
-                <div className="text-sm text-blue-400 font-light">Complexity Score</div>
-                <div className="text-2xl font-light text-blue-300">
+              <div className="bg-blue-50 dark:bg-blue-500/10 backdrop-blur-sm border border-blue-200 dark:border-blue-500/20 p-3 rounded-lg">
+                <div className="text-sm text-blue-600 dark:text-blue-400 font-light">Complexity Score</div>
+                <div className="text-2xl font-light text-blue-700 dark:text-blue-300">
                   {details.complexity_score ?? 'NaN'}
                 </div>
-                <div className="text-xs text-blue-400/70">Query analysis complexity</div>
+                <div className="text-xs text-blue-600/70 dark:text-blue-400/70">Query analysis complexity</div>
               </div>
-              <div className="bg-purple-500/10 backdrop-blur-sm border border-purple-500/20 p-3 rounded-lg">
-                <div className="text-sm text-purple-400 font-light">Domains Detected</div>
-                <div className="text-2xl font-light text-purple-300">
+              <div className="bg-purple-50 dark:bg-purple-500/10 backdrop-blur-sm border border-purple-200 dark:border-purple-500/20 p-3 rounded-lg">
+                <div className="text-sm text-purple-600 dark:text-purple-400 font-light">Domains Detected</div>
+                <div className="text-2xl font-light text-purple-700 dark:text-purple-300">
                   {details.domains ?? 'NaN'}
                 </div>
-                <div className="text-xs text-purple-400/70">Different content types</div>
+                <div className="text-xs text-purple-600/70 dark:text-purple-400/70">Different content types</div>
               </div>
             </div>
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 p-3 rounded-lg">
-              <div className="text-sm text-white/80 font-light mb-2">Strategy Decision</div>
-              <div className="text-sm text-white/90">
+            <div className="bg-gray-50 dark:bg-white/5 backdrop-blur-sm border border-gray-200 dark:border-white/10 p-3 rounded-lg">
+              <div className="text-sm text-gray-700 dark:text-white/80 font-light mb-2">Strategy Decision</div>
+              <div className="text-sm text-gray-900 dark:text-white/90">
                 {details.decision || 'ERROR: No strategy decision available'}
               </div>
             </div>
@@ -404,8 +404,8 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
 
       default:
         return (
-          <div className="text-center text-white/60 py-8">
-            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-white/30" />
+          <div className="text-center text-gray-600 dark:text-white/60 py-8">
+            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-gray-400 dark:text-white/30" />
             <p className="text-sm block">No detailed information available for this step</p>
           </div>
         );
@@ -413,13 +413,13 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
   };
 
   return (
-    <div className="p-6 h-[400px] overflow-y-auto bg-white/5 backdrop-blur-md border border-white/10 rounded-xl">
+    <div className="p-6 h-[400px] overflow-y-auto bg-gray-50 dark:bg-white/5 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-xl">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           {getStatusIcon()}
           <div>
-            <h3 className="text-lg font-light text-white">{getStepTitle()}</h3>
-            <p className="text-sm text-white/70 block">{getStepDescription()}</p>
+            <h3 className="text-lg font-light text-gray-900 dark:text-white">{getStepTitle()}</h3>
+            <p className="text-sm text-gray-700 dark:text-white/70 block">{getStepDescription()}</p>
           </div>
         </div>
         {getStatusBadge()}

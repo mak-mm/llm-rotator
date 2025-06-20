@@ -69,33 +69,33 @@ export function QueryResultModal({
           {/* Privacy Metrics */}
           {metrics && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+              <div className="bg-gray-50 dark:bg-white/5 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-xl p-4 text-center">
                 <Shield className="h-6 w-6 text-green-400 mx-auto mb-2" />
-                <div className="text-xl font-light text-white">
+                <div className="text-xl font-light text-gray-900 dark:text-white">
                   {metrics.privacy_score ? `${(metrics.privacy_score * 100).toFixed(0)}%` : 'N/A'}
                 </div>
                 <p className="text-xs text-white/60 mt-1">Privacy Score</p>
               </div>
               
-              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+              <div className="bg-gray-50 dark:bg-white/5 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-xl p-4 text-center">
                 <Zap className="h-6 w-6 text-blue-400 mx-auto mb-2" />
-                <div className="text-xl font-light text-white">
+                <div className="text-xl font-light text-gray-900 dark:text-white">
                   {metrics.fragments_processed || 0}
                 </div>
                 <p className="text-xs text-white/60 mt-1">Fragments</p>
               </div>
               
-              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+              <div className="bg-gray-50 dark:bg-white/5 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-xl p-4 text-center">
                 <Clock className="h-6 w-6 text-purple-400 mx-auto mb-2" />
-                <div className="text-xl font-light text-white">
+                <div className="text-xl font-light text-gray-900 dark:text-white">
                   {metrics.total_time ? `${metrics.total_time.toFixed(1)}s` : 'N/A'}
                 </div>
                 <p className="text-xs text-white/60 mt-1">Time</p>
               </div>
               
-              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+              <div className="bg-gray-50 dark:bg-white/5 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-xl p-4 text-center">
                 <DollarSign className="h-6 w-6 text-orange-400 mx-auto mb-2" />
-                <div className="text-xl font-light text-white">
+                <div className="text-xl font-light text-gray-900 dark:text-white">
                   {metrics.total_cost ? `$${metrics.total_cost.toFixed(4)}` : 'N/A'}
                 </div>
                 <p className="text-xs text-white/60 mt-1">Cost</p>

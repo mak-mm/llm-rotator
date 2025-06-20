@@ -132,7 +132,7 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center"
+        className="fixed inset-0 z-50 bg-white/90 dark:bg-black/90 backdrop-blur-md flex items-center justify-center"
       >
         <div className="text-center max-w-2xl mx-auto px-8">
           {/* Central animation - pulsing circle */}
@@ -204,7 +204,7 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
-                  className="text-white font-light text-2xl"
+                  className="text-gray-900 dark:text-white font-light text-2xl"
                 >
                   {progress < 100 ? `${Math.round(progress)}%` : '✓'}
                 </motion.div>
@@ -220,7 +220,7 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5 }}
-              className="text-white text-2xl font-light tracking-wide"
+              className="text-gray-900 dark:text-white text-2xl font-light tracking-wide"
             >
               {currentMessage}
             </motion.h2>
@@ -228,7 +228,7 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
 
           {/* Subtle progress bar */}
           <div className="mt-12 w-full max-w-md mx-auto">
-            <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
+            <div className="h-0.5 bg-gray-300 dark:bg-white/10 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400"
                 initial={{ width: 0 }}
@@ -244,7 +244,7 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
               <motion.div
                 key={index}
                 className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                  index <= currentMessageIndex ? 'bg-white' : 'bg-white/20'
+                  index <= currentMessageIndex ? 'bg-gray-900 dark:bg-white' : 'bg-gray-400 dark:bg-white/20'
                 }`}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}

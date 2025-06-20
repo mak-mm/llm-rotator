@@ -120,3 +120,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* React Flow Controls Theme Support */
+.react-flow__controls {
+  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 shadow-lg;
+}
+
+.react-flow__controls-button {
+  @apply bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700;
+}
+
+.react-flow__controls-button:last-child {
+  @apply border-b-0;
+}
+
+.react-flow__controls-button svg {
+  @apply text-gray-700 dark:text-gray-300;
+}
