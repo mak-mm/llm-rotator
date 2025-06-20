@@ -131,8 +131,9 @@ class SSEManager:
     
     async def send_step_update(self, request_id: str, step: str, status: str, 
                               progress: float = 0, message: str = "", 
+                              details: Optional[Dict] = None,
                               additional_data: Optional[Dict] = None):
-        """Send a step progress update"""
+        """Send a step progress update with optional detailed information"""
         event_data = {
             "type": "step_progress",
             "data": {
@@ -141,6 +142,7 @@ class SSEManager:
                 "progress": progress,  # 0-100
                 "message": message,
                 "timestamp": datetime.utcnow().isoformat(),
+                **({"details": details} if details else {}),
                 **(additional_data or {})
             }
         }
