@@ -11,7 +11,9 @@ export const useAnalyzeQuery = () => {
   return useMutation({
     mutationFn: (request: AnalyzeRequest) => queryService.analyze(request),
     onSuccess: (data: AnalyzeResponse) => {
-      toast.success('Query analyzed successfully');
+      // Don't show success toast here - wait for actual completion via SSE
+      // toast.success('Query analyzed successfully');
+      console.log('🚀 Query submission accepted, request_id:', data.request_id);
       // Invalidate and refetch any related queries
       queryClient.invalidateQueries({ queryKey: ['query-status', data.request_id] });
     },

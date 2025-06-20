@@ -23,6 +23,7 @@ import { useQuery } from '@/contexts/query-context';
 import { useSSESubscription, useSSEContext } from '@/contexts/sse-context';
 import { ProcessingFlowNode } from './ProcessingFlowNode';
 import { NewQueryModal } from '@/components/query/NewQueryModal';
+import { toast } from 'sonner';
 
 interface ProcessingFlowProps {
   requestId: string | null;
@@ -69,7 +70,7 @@ interface StepDetails {
 }
 
 export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepStatesChange }: ProcessingFlowProps) {
-  const { processingSteps } = useQuery();
+  const { processingSteps, setIsProcessing } = useQuery();
   const { isConnected } = useSSEContext();
   
   // Debug nodeTypes
@@ -194,6 +195,28 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
     if (message.type === 'complete' && message.data) {
       console.log('🎯 Complete event with data:', message.data);
       const { fragments: responseFragments, privacy_score, response_quality, total_cost, total_time } = message.data;
+      
+      // Show success toast when query is actually completed
+      toast.success('Query analyzed successfully');
+      
+      // Clear processing state to allow new queries
+      setIsProcessing(false);
+      console.log('🔄 Processing completed, clearing isProcessing state');
+      
+      // Mark all steps as completed (including skipped ones for simple queries)
+      setStepStates(prev => {
+        const completedStates = {
+          planning: 'completed' as const,
+          pii_detection: 'completed' as const,
+          fragmentation: 'completed' as const,
+          enhancement: 'completed' as const,
+          distribution: 'completed' as const,
+          aggregation: 'completed' as const,
+          final_response: 'completed' as const,
+        };
+        console.log('📊 Marking all steps as completed for final response');
+        return completedStates;
+      });
       
       // Update final response details
       if (privacy_score !== undefined || response_quality !== undefined) {
