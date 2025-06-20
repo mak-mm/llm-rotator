@@ -37,6 +37,8 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
   const [progress, setProgress] = useState(0);
   const [finalResponse, setFinalResponse] = useState<string | undefined>();
   const [detailedSteps, setDetailedSteps] = useState<string[]>([]);
+  const [stepQueue, setStepQueue] = useState<string[]>([]);
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false);
 
   // Subscribe to SSE events
   useSSESubscription(['step_progress', 'complete'], (message) => {
@@ -50,17 +52,9 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
         setCurrentMessage(PROCESSING_MESSAGES[messageIndex]);
       }
       
-      // Update detailed steps with the step message
+      // Add step message to queue instead of directly updating
       if (stepMessage && status === 'processing') {
-        setDetailedSteps(prev => {
-          const newSteps = [...prev];
-          // Keep only the last 3 detailed steps
-          if (newSteps.length >= 3) {
-            newSteps.shift();
-          }
-          newSteps.push(stepMessage);
-          return newSteps;
-        });
+        setStepQueue(prev => [...prev, stepMessage]);
       }
       
       // Update overall progress
@@ -88,6 +82,35 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
     }
   }, [onComplete]);
 
+  // Process step queue with minimum display time
+  useEffect(() => {
+    if (stepQueue.length > 0 && !isProcessingQueue) {
+      setIsProcessingQueue(true);
+      
+      // Process next step in queue
+      const nextStep = stepQueue[0];
+      
+      // Add step to detailed steps
+      setDetailedSteps(prev => {
+        const newSteps = [...prev];
+        // Keep only the last 3 detailed steps
+        if (newSteps.length >= 3) {
+          newSteps.shift();
+        }
+        newSteps.push(nextStep);
+        return newSteps;
+      });
+      
+      // Remove from queue
+      setStepQueue(prev => prev.slice(1));
+      
+      // Wait minimum 1.5 seconds before processing next step
+      setTimeout(() => {
+        setIsProcessingQueue(false);
+      }, 1500);
+    }
+  }, [stepQueue, isProcessingQueue]);
+
   // Reset state when overlay becomes visible
   useEffect(() => {
     if (isVisible) {
@@ -96,6 +119,8 @@ export function MinimalProcessingOverlay({ isVisible, requestId, onComplete }: M
       setProgress(0);
       setFinalResponse(undefined);
       setDetailedSteps([]);
+      setStepQueue([]);
+      setIsProcessingQueue(false);
     }
   }, [isVisible]);
 
