@@ -359,7 +359,7 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
               <div className="bg-blue-50 p-3 rounded-lg">
                 <div className="text-sm text-blue-600 font-medium">Response Quality</div>
                 <div className="text-2xl font-bold text-blue-900">
-                  {details.response_quality?.toFixed(2) ?? 'NaN'}
+                  {(details.response_quality && typeof details.response_quality === 'number') ? details.response_quality.toFixed(2) : 'NaN'}
                 </div>
                 <div className="text-xs text-blue-500">Output coherence</div>
               </div>
@@ -368,14 +368,14 @@ export function StepDetailPanel({ selectedStep, stepStates, stepDetails, fragmen
               <div className="bg-purple-50 p-3 rounded-lg">
                 <div className="text-sm text-purple-600 font-medium">Total Latency</div>
                 <div className="text-2xl font-bold text-purple-900">
-                  {details.total_time ? `${details.total_time.toFixed(1)}s` : 'NaN'}
+                  {(details.total_time && typeof details.total_time === 'number') ? `${details.total_time.toFixed(1)}s` : 'NaN'}
                 </div>
                 <div className="text-xs text-purple-500">Processing time</div>
               </div>
               <div className="bg-orange-50 p-3 rounded-lg">
                 <div className="text-sm text-orange-600 font-medium">Cost</div>
                 <div className="text-2xl font-bold text-orange-900">
-                  {details.total_cost ? `$${details.total_cost.toFixed(4)}` : 'NaN'}
+                  {(details.total_cost && typeof details.total_cost === 'number') ? `$${details.total_cost.toFixed(4)}` : 'NaN'}
                 </div>
                 <div className="text-xs text-orange-500">Total expense</div>
               </div>

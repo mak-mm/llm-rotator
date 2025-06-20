@@ -457,8 +457,8 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
           items: [
             { label: 'Privacy score', value: details.privacy_score ? `${(details.privacy_score * 100).toFixed(0)}%` : 'NaN', highlight: true },
             { label: 'Response quality', value: (details.response_quality && typeof details.response_quality === 'number') ? details.response_quality.toFixed(2) : 'NaN' },
-            { label: 'Total latency', value: details.total_time ? `${details.total_time.toFixed(1)}s` : 'NaN' },
-            { label: 'Cost', value: details.total_cost ? `$${details.total_cost.toFixed(4)}` : 'NaN' }
+            { label: 'Total latency', value: (details.total_time && typeof details.total_time === 'number') ? `${details.total_time.toFixed(1)}s` : 'NaN' },
+            { label: 'Cost', value: (details.total_cost && typeof details.total_cost === 'number') ? `$${details.total_cost.toFixed(4)}` : 'NaN' }
           ]
         };
         

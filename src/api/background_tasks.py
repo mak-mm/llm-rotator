@@ -55,7 +55,7 @@ async def process_query_background(
         # Send initial step update with details
         await sse_manager.send_step_update(
             request_id, "query_analysis", "processing", 10,
-            f"Query received: {len(query_request.query)} characters",
+            "Analyzing query structure and content",
             details={
                 "complexity_score": "0.00",  # Will be updated
                 "domains": "0",  # Will be updated
@@ -71,7 +71,7 @@ async def process_query_background(
         logger.info(f"[{request_id}] 📡 SSE: Sending PII detection start")
         await sse_manager.send_step_update(
             request_id, "pii_detection", "processing", 0,
-            "Scanning for 50+ PII types using Microsoft Presidio...",
+            "Scanning for sensitive information",
             details={
                 "entity_count": "0",
                 "sensitivity_score": "Analyzing...",
@@ -103,9 +103,14 @@ async def process_query_background(
         
         # Send SSE update for PII detection completion with detailed info
         pii_entity_types = [e.type for e in detection_report.pii_entities]
+        if len(detection_report.pii_entities) > 0:
+            step_message = "Sensitive information detected"
+        else:
+            step_message = "No sensitive information found"
+        
         await sse_manager.send_step_update(
             request_id, "pii_detection", "completed", 100,
-            f"Found {len(detection_report.pii_entities)} PII entities",
+            step_message,
             details={
                 "entity_count": str(len(detection_report.pii_entities)),
                 "sensitivity_score": f"{int(detection_report.sensitivity_score * 100)}",
@@ -198,7 +203,7 @@ async def process_query_background(
             # Send SSE update for fragmentation completion with details
             await sse_manager.send_step_update(
                 request_id, "fragmentation", "completed", 100,
-                f"Created {len(fragments)} privacy-preserving fragments",
+                "Query fragmented for privacy protection",
                 details={
                     "strategy": "Semantic + Entity",
                     "fragment_count": str(len(fragments)),
@@ -239,7 +244,7 @@ async def process_query_background(
                     # Send SSE enhancement progress  
                     await sse_manager.send_step_update(
                         request_id, "enhancement", "processing", 50,
-                        f"Enhancing {len(fragments)} fragments with GPT-4o-mini..."
+                        "Optimizing fragment context and boundaries"
                     )
                     
                     # Enhance fragments with context and instructions
@@ -265,7 +270,7 @@ async def process_query_background(
                     # Send SSE enhancement completion with details
                     await sse_manager.send_step_update(
                         request_id, "enhancement", "completed", 100,
-                        f"Enhanced {enhancement_stats.get('enhanced_count', 0)} fragments with optimal context (quality score: {enhancement_stats.get('average_quality_score', 0):.2f})",
+                        "Fragments optimized with enhanced context",
                         details={
                             "fragments_enhanced": str(enhancement_stats.get('enhanced_count', 0)),
                             "context_quality": f"{enhancement_stats.get('average_quality_score', 0):.2f}",
@@ -283,7 +288,7 @@ async def process_query_background(
                     # Send SSE error but continue with original fragments
                     await sse_manager.send_step_update(
                         request_id, "enhancement", "completed", 100,
-                        f"Enhancement failed, using original {len(fragments)} fragments"
+                        "Using original fragments without enhancement"
                     )
             else:
                 logger.warning(f"[{request_id}] Skipping fragment enhancement: Missing API key or no fragments")
@@ -341,7 +346,7 @@ async def process_query_background(
             # Send SSE planning completion with final details
             await sse_manager.send_step_update(
                 request_id, "planning", "completed", 100,
-                f"Optimized routing to {len(set(f.provider.value for f in fragments))} providers",
+                "Provider routing strategy optimized",
                 details={
                     "complexity_score": f"{detection_report.sensitivity_score:.2f}",
                     "domains": str(len(set(e.type for e in detection_report.pii_entities))),
@@ -435,7 +440,7 @@ async def process_query_background(
             
             await sse_manager.send_step_update(
                 request_id, "distribution", "processing", 10,
-                f"🚀 Sending {len(fragments)} fragments to providers in parallel...",
+                "Routing fragments to multiple providers",
                 details={
                     "fragments_sent": str(len(fragments)),
                     "providers_used": str(len(provider_counts)),
@@ -458,7 +463,7 @@ async def process_query_background(
             # Send completion SSE update
             await sse_manager.send_step_update(
                 request_id, "distribution", "processing", 90,
-                f"✅ All {len(fragments)} fragments processed in parallel ({parallel_time:.1f}s)"
+                "All fragments processed successfully"
             )
             
             # Log distribution completion
@@ -473,7 +478,7 @@ async def process_query_background(
             # Send SSE update for distribution completion with details
             await sse_manager.send_step_update(
                 request_id, "distribution", "completed", 100,
-                f"All {len(fragment_responses)} fragments processed successfully",
+                "Fragment distribution completed",
                 details={
                     "fragments_sent": str(len(fragments)),
                     "providers_used": str(len(provider_counts)),
@@ -502,7 +507,7 @@ async def process_query_background(
             # Send SSE update for aggregation progress
             await sse_manager.send_step_update(
                 request_id, "aggregation", "processing", 50,
-                f"Merging {len(fragment_responses)} provider responses..."
+                "Intelligently merging provider responses"
             )
             
             # Intelligent aggregation using the same GPT-4o-mini that enhanced the fragments
@@ -527,7 +532,7 @@ async def process_query_background(
                         logger.info(f"[{request_id}] Intelligent aggregation COMPLETE: {len(aggregated_response)} chars")
                         
                         # Update aggregation method in SSE details
-                        aggregation_method = "GPT-4o-mini Intelligent"
+                        aggregation_method = "Intelligent"
                         coherence_score = "0.95"  # Higher score for intelligent aggregation
                         
                     except Exception as e:
@@ -571,7 +576,7 @@ async def process_query_background(
             # Send SSE update for aggregation completion with details
             await sse_manager.send_step_update(
                 request_id, "aggregation", "completed", 100,
-                f"Successfully aggregated {len(fragment_responses)} responses using {aggregation_method}",
+                "Response aggregation completed successfully",
                 details={
                     "received": f"{len(fragment_responses)}",
                     "coherence": coherence_score,
@@ -584,8 +589,8 @@ async def process_query_background(
             fragments = []
             fragment_responses = []
             
-            # For simple queries, send directly to GPT-4o-mini without fragmentation
-            logger.info(f"[{request_id}] Processing simple query directly with GPT-4o-mini...")
+            # For simple queries, send directly to a single provider without fragmentation
+            logger.info(f"[{request_id}] Processing simple query directly...")
             
             import os
             openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -663,7 +668,7 @@ async def process_query_background(
         # Send SSE update for final response completion with all metrics
         await sse_manager.send_step_update(
             request_id, "final_response", "completed", 100,
-            f"Response delivered • {total_time:.1f}s total • Privacy score: {privacy_score:.1%}",
+            "Privacy-protected response ready",
             details={
                 "privacy_score": privacy_score,
                 "response_quality": response_quality,
