@@ -2,6 +2,7 @@
 
 import { Header } from "@/components/layout/header";
 import { ProcessingFlowWithDetails } from "@/components/flow/ProcessingFlowWithDetails";
+import { ProcessingOverlay } from "@/components/processing/ProcessingOverlay";
 import { QueryProvider, useQuery } from "@/contexts/query-context";
 import { useEffect, useState } from "react";
 
@@ -12,6 +13,8 @@ function HomeContent() {
     isProcessing, 
     setQueryResult, 
     setIsProcessing, 
+    showProcessingOverlay,
+    setShowProcessingOverlay,
     investorMetrics, 
     realTimeData,
     requestId 
@@ -33,6 +36,10 @@ function HomeContent() {
   }
 
 
+  const handleProcessingComplete = () => {
+    setShowProcessingOverlay(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <Header />
@@ -50,6 +57,13 @@ function HomeContent() {
         </div>
 
       </main>
+
+      {/* Full-Screen Processing Overlay */}
+      <ProcessingOverlay
+        isVisible={showProcessingOverlay}
+        requestId={requestId}
+        onComplete={handleProcessingComplete}
+      />
     </div>
   );
 }

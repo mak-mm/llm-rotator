@@ -59,6 +59,7 @@ export function NewQueryModal({ children }: NewQueryModalProps) {
   const { 
     setCurrentQuery, 
     setIsProcessing,
+    setShowProcessingOverlay,
     isProcessing,
     resetInvestorData,
     setRequestId,
@@ -88,6 +89,9 @@ export function NewQueryModal({ children }: NewQueryModalProps) {
       setCurrentQuery(queryText.trim());
       setIsProcessing(true);
       
+      // Show full-screen processing overlay
+      setShowProcessingOverlay(true);
+      
       // Log for debugging
       console.log('🚀 Query submitted from modal, keeping previous visualization until new one starts');
 
@@ -111,6 +115,7 @@ export function NewQueryModal({ children }: NewQueryModalProps) {
     } catch (error) {
       console.error('Query submission failed:', error);
       setIsProcessing(false);
+      setShowProcessingOverlay(false);
       
       // Clear active request ID on submission error
       setActiveRequestId(null);

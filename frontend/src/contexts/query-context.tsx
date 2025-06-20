@@ -51,6 +51,7 @@ interface QueryContextType {
   currentQuery: string;
   queryResult: AnalyzeResponse | null;
   isProcessing: boolean;
+  showProcessingOverlay: boolean;
   investorMetrics: InvestorMetrics;
   realTimeData: Record<string, any>;
   requestId: string | null;
@@ -58,6 +59,7 @@ interface QueryContextType {
   setCurrentQuery: (query: string) => void;
   setQueryResult: (result: AnalyzeResponse | null) => void;
   setIsProcessing: (processing: boolean) => void;
+  setShowProcessingOverlay: (show: boolean) => void;
   updateInvestorMetrics: (metrics: Partial<InvestorMetrics>) => void;
   updateRealTimeData: (data: Record<string, any>) => void;
   resetInvestorData: () => void;
@@ -72,6 +74,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   const [currentQuery, setCurrentQuery] = useState<string>('');
   const [queryResult, setQueryResult] = useState<AnalyzeResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [showProcessingOverlay, setShowProcessingOverlay] = useState<boolean>(false);
   const [investorMetrics, setInvestorMetrics] = useState<InvestorMetrics>({});
   const [realTimeData, setRealTimeData] = useState<Record<string, any>>({});
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -136,6 +139,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         currentQuery,
         queryResult,
         isProcessing,
+        showProcessingOverlay,
         investorMetrics,
         realTimeData,
         requestId,
@@ -144,6 +148,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         setCurrentQuery,
         setQueryResult: setQueryResultWithLog,
         setIsProcessing: setIsProcessingWithTime,
+        setShowProcessingOverlay,
         updateInvestorMetrics,
         updateRealTimeData,
         resetInvestorData,
