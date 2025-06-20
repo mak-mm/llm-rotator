@@ -23,7 +23,6 @@ import { useQuery } from '@/contexts/query-context';
 import { useSSESubscription, useSSEContext } from '@/contexts/sse-context';
 import { ProcessingFlowNode } from './ProcessingFlowNode';
 import { NewQueryModal } from '@/components/query/NewQueryModal';
-import { toast } from 'sonner';
 
 interface ProcessingFlowProps {
   requestId: string | null;
@@ -197,8 +196,7 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
       console.log('🎯 Final response in completion:', message.data.final_response || message.data.aggregated_response);
       const { fragments: responseFragments, privacy_score, response_quality, total_cost, total_time } = message.data;
       
-      // Show success toast when query is actually completed
-      toast.success('Query analyzed successfully');
+      // Processing completed - no toast needed as we have the overlay
       
       // Clear processing state to allow new queries
       setIsProcessing(false);

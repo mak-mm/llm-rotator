@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Shield, Zap, DollarSign, Copy, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle, Shield, Zap, DollarSign, Copy, RefreshCw, X, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface QueryResultModalProps {
@@ -48,106 +46,118 @@ export function QueryResultModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            Query Processed Successfully
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          {/* Original Query */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Your Query:</h3>
-            <Card className="p-4 bg-gray-50">
-              <p className="text-sm text-gray-800">{query}</p>
-            </Card>
-          </div>
-
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-black/95 backdrop-blur-xl border-white/10">
+        <div className="relative">
+          {/* Success Icon */}
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, type: "spring" }}
+            className="text-center mb-6"
+          >
+            <div className="w-16 h-16 mx-auto mb-4 relative">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 opacity-20 blur-xl" />
+              <div className="relative w-full h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-light text-white mb-1">
+              Privacy-Protected Response
+            </h2>
+            <p className="text-sm text-white/60 font-light">Your query was successfully processed</p>
+          </motion.div>
           {/* Privacy Metrics */}
           {metrics && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="p-4 text-center">
-                <Shield className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-gray-900">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+                <Shield className="h-6 w-6 text-green-400 mx-auto mb-2" />
+                <div className="text-xl font-light text-white">
                   {metrics.privacy_score ? `${(metrics.privacy_score * 100).toFixed(0)}%` : 'N/A'}
                 </div>
-                <p className="text-xs text-gray-600 mt-1">Privacy Score</p>
-              </Card>
+                <p className="text-xs text-white/60 mt-1">Privacy Score</p>
+              </div>
               
-              <Card className="p-4 text-center">
-                <Zap className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-gray-900">
+              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+                <Zap className="h-6 w-6 text-blue-400 mx-auto mb-2" />
+                <div className="text-xl font-light text-white">
                   {metrics.fragments_processed || 0}
                 </div>
-                <p className="text-xs text-gray-600 mt-1">Fragments</p>
-              </Card>
+                <p className="text-xs text-white/60 mt-1">Fragments</p>
+              </div>
               
-              <Card className="p-4 text-center">
-                <DollarSign className="h-8 w-8 text-purple-500 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-gray-900">
-                  {metrics.total_cost ? `$${metrics.total_cost.toFixed(4)}` : 'N/A'}
-                </div>
-                <p className="text-xs text-gray-600 mt-1">Cost</p>
-              </Card>
-              
-              <Card className="p-4 text-center">
-                <CheckCircle className="h-8 w-8 text-orange-500 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-gray-900">
+              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+                <Clock className="h-6 w-6 text-purple-400 mx-auto mb-2" />
+                <div className="text-xl font-light text-white">
                   {metrics.total_time ? `${metrics.total_time.toFixed(1)}s` : 'N/A'}
                 </div>
-                <p className="text-xs text-gray-600 mt-1">Time</p>
-              </Card>
+                <p className="text-xs text-white/60 mt-1">Time</p>
+              </div>
+              
+              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 text-center">
+                <DollarSign className="h-6 w-6 text-orange-400 mx-auto mb-2" />
+                <div className="text-xl font-light text-white">
+                  {metrics.total_cost ? `$${metrics.total_cost.toFixed(4)}` : 'N/A'}
+                </div>
+                <p className="text-xs text-white/60 mt-1">Cost</p>
+              </div>
             </div>
           )}
+
+          {/* Original Query */}
+          <div>
+            <h3 className="text-xs font-medium text-white/60 mb-2">Your Query</h3>
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4">
+              <p className="text-sm text-white/80">{query}</p>
+            </div>
+          </div>
 
           {/* AI Response */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-gray-600">AI Response:</h3>
-              <Button
-                variant="ghost"
-                size="sm"
+              <h3 className="text-xs font-medium text-white/60">AI Response</h3>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleCopy}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 px-3 py-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg text-white/80 hover:bg-white/10 transition-all text-xs"
               >
-                <Copy className="h-4 w-4" />
+                <Copy className="h-3 w-3" />
                 {copied ? 'Copied!' : 'Copy'}
-              </Button>
+              </motion.button>
             </div>
-            <Card className="p-6 bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
-              <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+            <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-md border border-white/10 rounded-xl p-6">
+              <p className="text-sm text-white leading-relaxed whitespace-pre-wrap">
                 {response || 'No response available'}
               </p>
-            </Card>
+            </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-between items-center pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">
-                {metrics?.providers_used || 0} Providers Used
-              </Badge>
-              <Badge variant="outline" className="text-xs">
-                Quality: {metrics?.response_quality ? (metrics.response_quality * 100).toFixed(0) : 'N/A'}%
-              </Badge>
+          <div className="flex justify-between items-center pt-4 border-t border-white/10">
+            <div className="flex items-center gap-3 text-white/40 text-xs">
+              <span>{metrics?.providers_used || 0} Providers Used</span>
+              <span>•</span>
+              <span>Quality: {metrics?.response_quality ? (metrics.response_quality * 100).toFixed(0) : 'N/A'}%</span>
             </div>
             
             <div className="flex gap-3">
-              <Button
-                variant="outline"
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={onClose}
+                className="px-4 py-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg text-white/80 hover:bg-white/10 transition-all text-sm"
               >
                 Close
-              </Button>
-              <Button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleNewQuery}
-                className="flex items-center gap-2"
+                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg text-white flex items-center gap-2 hover:opacity-90 transition-all text-sm"
               >
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className="h-3 w-3" />
                 New Query
-              </Button>
+              </motion.button>
             </div>
           </div>
         </div>

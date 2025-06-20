@@ -1,12 +1,9 @@
 "use client";
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Send, Sparkles } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { motion } from 'framer-motion';
+import { Send, Shield, Brain, Zap } from 'lucide-react';
 import { useQuery } from '@/contexts/query-context';
 import { useAnalyzeQuery } from '@/hooks/useQuery';
 import { useSSEContext } from '@/contexts/sse-context';
@@ -124,89 +121,122 @@ export function NewQueryModal({ children }: NewQueryModalProps) {
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isProcessing) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-blue-500" />
-            New Privacy-Preserving Query
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-6">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-black/95 backdrop-blur-xl border-white/10">
+        <div className="relative">
+          {/* Header with icon */}
+          <div className="text-center mb-8">
+            <motion.div
+              className="w-16 h-16 mx-auto mb-4 relative"
+              animate={{
+                scale: [1, 1.05, 1],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            >
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 opacity-20 blur-xl" />
+              <div className="relative w-full h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                <Shield className="w-8 h-8 text-white" />
+              </div>
+            </motion.div>
+            
+            <h2 className="text-2xl font-light text-white mb-2">
+              Ask anything with complete privacy
+            </h2>
+            <p className="text-sm text-white/60 font-light">
+              Your query will be automatically fragmented and distributed to protect sensitive information
+            </p>
+          </div>
           {/* Query Input */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium block">Enter your query:</label>
-            <Textarea
-              value={queryText}
-              onChange={(e) => setQueryText(e.target.value)}
-              placeholder="Type your question here... Don't worry about sensitive data - it will be automatically detected and protected."
-              className="min-h-24 resize-none"
-              disabled={analyzeMutation.isPending || isProcessing}
-            />
-            <div className="flex justify-between items-center">
-              <p className="text-xs text-gray-500 block">
-                Your query will be automatically fragmented and anonymized to protect sensitive information.
-              </p>
-              <Button 
+          <div className="space-y-4">
+            <div className="relative">
+              <textarea
+                value={queryText}
+                onChange={(e) => setQueryText(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your question here..."
+                className="w-full min-h-[120px] bg-white/5 backdrop-blur-md border border-white/10 rounded-xl px-6 py-4 text-white placeholder-white/40 resize-none focus:outline-none focus:border-white/20 transition-all"
+                disabled={analyzeMutation.isPending || isProcessing}
+                autoFocus
+              />
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleSubmit}
                 disabled={analyzeMutation.isPending || isProcessing || !queryText.trim()}
-                className="flex items-center gap-2"
+                className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                <Send className="h-4 w-4" />
-                {(analyzeMutation.isPending || isProcessing) ? 'Processing...' : 'Submit Query'}
-              </Button>
+                <Send className="w-4 h-4 ml-0.5" />
+              </motion.button>
             </div>
+            <p className="text-xs text-white/40 text-center">
+              Press Enter to submit • Your data is automatically protected
+            </p>
           </div>
 
           {/* Example Queries */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-medium">Try these examples:</h3>
-              <Badge variant="secondary" className="text-xs">Click to use</Badge>
-            </div>
+            <p className="text-xs text-white/40 text-center">Try an example:</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {EXAMPLE_QUERIES.map((example, index) => (
-                <Card 
+                <motion.button
                   key={index}
-                  className="p-4 cursor-pointer hover:bg-gray-50 transition-colors border-l-4 border-l-blue-200"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="p-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all text-left"
                   onClick={() => handleExampleClick(example.query)}
                   disabled={analyzeMutation.isPending || isProcessing}
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Badge variant="outline" className="text-xs">
+                      <span className="text-xs font-medium text-white/80">
                         {example.category}
-                      </Badge>
-                      <span className="text-xs text-gray-400">Click to use</span>
+                      </span>
+                      <div className={`w-2 h-2 rounded-full ${
+                        example.description.includes('will trigger fragmentation') ? 'bg-red-400' :
+                        example.description.includes('sensitive') ? 'bg-yellow-400' :
+                        'bg-green-400'
+                      }`} />
                     </div>
-                    <p className="text-sm text-gray-800 line-clamp-3 block">
+                    <p className="text-xs text-white/60 line-clamp-2">
                       {example.query}
                     </p>
-                    <p className="text-xs text-gray-500 italic block">
-                      {example.description}
-                    </p>
                   </div>
-                </Card>
+                </motion.button>
               ))}
             </div>
           </div>
 
-          {/* Info Section */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">Privacy Protection Features:</h4>
-            <ul className="text-xs text-blue-800 space-y-1">
-              <li>• Automatic PII detection (names, emails, phone numbers, SSNs, etc.)</li>
-              <li>• Query fragmentation across multiple LLM providers</li>
-              <li>• Context isolation to prevent complete data exposure</li>
-              <li>• Real-time privacy scoring and visualization</li>
-              <li>• Enterprise-grade anonymization and de-anonymization</li>
-            </ul>
+          {/* Privacy Features */}
+          <div className="flex justify-center gap-6 pt-4 border-t border-white/10">
+            <div className="flex items-center gap-2 text-white/40">
+              <Shield className="w-3 h-3" />
+              <span className="text-xs">Privacy Protected</span>
+            </div>
+            <div className="flex items-center gap-2 text-white/40">
+              <Zap className="w-3 h-3" />
+              <span className="text-xs">Instant Fragmentation</span>
+            </div>
+            <div className="flex items-center gap-2 text-white/40">
+              <Brain className="w-3 h-3" />
+              <span className="text-xs">AI-Powered</span>
+            </div>
           </div>
         </div>
       </DialogContent>
