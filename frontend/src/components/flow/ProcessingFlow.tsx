@@ -687,15 +687,15 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
   }, [isResizing]);
 
   return (
-    <Card className="p-6">
+    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Privacy-Preserving Processing Pipeline</h3>
+        <h3 className="text-lg font-light text-white">Privacy-Preserving Processing Pipeline</h3>
         <div className="flex items-center gap-3">
           <NewChatModal>
             <Button
               variant="default"
               size="sm"
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:opacity-90 text-white border-0"
               title="Start a new privacy-preserving chat"
             >
               <Plus className="h-4 w-4" />
@@ -706,20 +706,20 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
             variant="outline"
             size="sm"
             onClick={resetLayout}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:text-white"
             title="Reset layout to default positions"
           >
             <RotateCcw className="h-4 w-4" />
             Reset Layout
           </Button>
-          <span className="text-sm text-gray-500">
+          <span className="text-xs text-white/40">
             Height: {containerHeight}px
           </span>
         </div>
       </div>
       <div 
         ref={containerRef}
-        className="relative w-full border rounded-lg bg-gray-50"
+        className="relative w-full border border-white/10 rounded-lg bg-black/50"
         style={{ height: `${containerHeight}px` }}
       >
         <ReactFlow
@@ -765,28 +765,28 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
             onNodeSelect?.(null);
           }}
         >
-          <Background color="#f0f0f0" gap={16} />
+          <Background color="#ffffff10" gap={16} />
           <Controls />
         </ReactFlow>
         
         {/* Resize handle */}
         <div
           className={`absolute bottom-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center transition-all group ${
-            isResizing ? 'bg-blue-500/20' : 'hover:bg-gray-200'
+            isResizing ? 'bg-blue-500/20' : 'hover:bg-white/10'
           }`}
           onMouseDown={handleMouseDown}
           title="Drag to resize"
         >
           <div className={`flex gap-1 transition-opacity ${isResizing ? 'opacity-100' : 'opacity-50 group-hover:opacity-100'}`}>
-            <div className="w-8 h-0.5 bg-gray-400 rounded-full" />
-            <div className="w-8 h-0.5 bg-gray-400 rounded-full" />
-            <div className="w-8 h-0.5 bg-gray-400 rounded-full" />
+            <div className="w-8 h-0.5 bg-white/40 rounded-full" />
+            <div className="w-8 h-0.5 bg-white/40 rounded-full" />
+            <div className="w-8 h-0.5 bg-white/40 rounded-full" />
           </div>
         </div>
       </div>
-      <div className="flex gap-4 mt-4 text-sm">
+      <div className="flex gap-4 mt-4 text-sm text-white/60">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-gray-300 rounded"></div>
+          <div className="w-3 h-3 bg-white/30 rounded"></div>
           <span>Pending</span>
         </div>
         <div className="flex items-center gap-2">
@@ -798,7 +798,7 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
           <span>Completed</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-gray-400 rounded opacity-60"></div>
+          <div className="w-3 h-3 bg-white/20 rounded opacity-60"></div>
           <span>Skipped</span>
         </div>
         {fragments.length > 0 && (
@@ -809,17 +809,17 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
         )}
       </div>
       
-      {/* Clean Fragment Panel */}
+      {/* Dark Fragment Panel */}
       {selectedNode === 'distribution' && fragments.length > 0 && (
-        <div className="mt-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div className="mt-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl">
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="font-semibold text-gray-900">
+              <h4 className="font-light text-white">
                 Fragments ({fragments.length})
               </h4>
               <button
                 onClick={() => setSelectedNode(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-white/40 hover:text-white/60 text-xl"
               >
                 ×
               </button>
@@ -830,15 +830,15 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
                 <div
                   key={fragment.id}
                   onClick={() => setSelectedFragment(selectedFragment === fragment.id ? null : fragment.id)}
-                  className="p-3 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50"
+                  className="p-3 border border-white/10 rounded-lg cursor-pointer hover:bg-white/5 transition-all"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-medium">
+                      <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full flex items-center justify-center text-xs font-medium">
                         {index + 1}
                       </div>
-                      <span className="text-sm font-medium">Fragment {index + 1}</span>
-                      <span className="text-xs text-gray-500">{fragment.provider.toUpperCase()}</span>
+                      <span className="text-sm font-light text-white">Fragment {index + 1}</span>
+                      <span className="text-xs text-white/60">{fragment.provider.toUpperCase()}</span>
                     </div>
                     <div className={`w-2 h-2 rounded-full ${
                       fragment.status === 'completed' ? 'bg-green-400' : 'bg-blue-400'
@@ -846,9 +846,9 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
                   </div>
                   
                   {selectedFragment === fragment.id && (
-                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="text-xs text-gray-600 mb-1">Content:</div>
-                      <div className="text-sm text-gray-800 font-mono">
+                    <div className="mt-3 p-3 bg-black/20 backdrop-blur-sm border border-white/5 rounded-lg">
+                      <div className="text-xs text-white/60 mb-1">Content:</div>
+                      <div className="text-sm text-white/80 font-mono leading-relaxed">
                         {fragment.content || 'Fragment content not available'}
                       </div>
                     </div>
@@ -859,6 +859,6 @@ export function ProcessingFlow({ requestId, isProcessing, onNodeSelect, onStepSt
           </div>
         </div>
       )}
-    </Card>
+    </div>
   );
 }
